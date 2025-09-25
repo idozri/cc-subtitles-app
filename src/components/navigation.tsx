@@ -16,6 +16,7 @@ import { Play, LogOut, User, Settings } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import Image from 'next/image';
 
 export function Navigation() {
   const router = useRouter();
@@ -64,8 +65,14 @@ export function Navigation() {
       <div className="container mx-auto px-4 py-4 flex items-center justify-between">
         <div className="flex items-center space-x-6">
           <Link href="/" className="flex items-center space-x-2">
-            <Play className="h-8 w-8 text-primary" />
-            <span className="text-xl font-bold">CC Subtitles AI</span>
+            <Image
+              src="/assets/logo.jpg"
+              alt="CC Subtitles AI Logo"
+              width={32}
+              height={32}
+              className="rounded-full"
+            />
+            <span className="text-xl font-bold">Subtitles AI</span>
           </Link>
 
           {user && (
