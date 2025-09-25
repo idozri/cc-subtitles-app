@@ -5,13 +5,14 @@ const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 export async function GET(
   _request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const cookieStore = await cookies();
   const cookie = cookieStore.toString();
 
   try {
-    const resp = await fetch(`${BACKEND_URL}/projects/${params.id}/thumbnail`, {
+    const { id } = await params;
+    const resp = await fetch(`${BACKEND_URL}/projects/${id}/thumbnail`, {
       method: 'GET',
       headers: {
         Cookie: cookie,

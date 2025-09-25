@@ -10,6 +10,22 @@ export interface UploadProgress {
   speed?: number; // bytes per second
 }
 
+// Upload Session Types
+export interface UploadSession {
+  projectId: string;
+  uploadId: string;
+  s3Key: string;
+  parts: UploadedChunk[];
+  nextPartNumber: number;
+  status: 'uploading' | 'completed' | 'failed' | 'cancelled' | 'paused';
+  progress: number;
+  startedAt: Date;
+  lastActivity: Date;
+  fileSize: number;
+  fileName: string;
+  chunkSize: number;
+}
+
 // S3 Upload Types
 export interface MultipartUploadInit {
   uploadId: string;
