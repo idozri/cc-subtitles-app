@@ -1,0 +1,95 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    /* Dark theme inspired by mobile interface */
+    --background: 220 15% 8%;
+    --foreground: 220 10% 95%;
+
+    /* Card and surface colors */
+    --card: 220 15% 12%;
+    --card-foreground: 220 10% 95%;
+
+    --popover: 220 15% 10%;
+    --popover-foreground: 220 10% 95%;
+
+    /* Brand colors */
+    --primary: 168 84% 45%;
+    --primary-foreground: 220 15% 8%;
+
+    --secondary: 220 15% 15%;
+    --secondary-foreground: 220 10% 85%;
+
+    --accent: 168 84% 45%;
+    --accent-foreground: 220 15% 8%;
+
+    --muted: 220 15% 15%;
+    --muted-foreground: 220 10% 65%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 220 10% 95%;
+
+    --border: 220 15% 20%;
+    --input: 220 15% 15%;
+    --ring: 168 84% 45%;
+
+    /* Video player specific */
+    --video-bg: 220 15% 6%;
+    --video-controls: 220 15% 12%;
+    --subtitle-bg: 220 15% 8%;
+    --timeline: 168 84% 45%;
+
+    /* Gradients */
+    --gradient-primary: linear-gradient(
+      135deg,
+      hsl(168 84% 45%),
+      hsl(168 84% 55%)
+    );
+    --gradient-dark: linear-gradient(180deg, hsl(220 15% 8%), hsl(220 15% 12%));
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 220 15% 10%;
+    --sidebar-foreground: 220 10% 85%;
+    --sidebar-primary: 168 84% 45%;
+    --sidebar-primary-foreground: 220 15% 8%;
+    --sidebar-accent: 220 15% 15%;
+    --sidebar-accent-foreground: 220 10% 85%;
+    --sidebar-border: 220 15% 20%;
+    --sidebar-ring: 168 84% 45%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@layer components {
+  .video-player {
+    @apply bg-gradient-to-b from-[hsl(var(--video-bg))] to-[hsl(var(--video-controls))];
+  }
+
+  .subtitle-track {
+    @apply bg-[hsl(var(--subtitle-bg))] rounded-lg border border-border;
+  }
+
+  .timeline-active {
+    @apply bg-[hsl(var(--timeline))];
+  }
+}

@@ -1,0 +1,272 @@
+{
+	"info": {
+		"_postman_id": "259dd825-cac7-4aad-bc54-05b3fb23e9eb",
+		"name": "API Transcription",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "48223866",
+		"_collection_link": "https://legotechapps.postman.co/workspace/Subtitles-AI~de6e3fd3-a679-4243-a687-cacbb539ec7d/collection/12277674-259dd825-cac7-4aad-bc54-05b3fb23e9eb?action=share&source=collection_link&creator=48223866"
+	},
+	"item": [
+		{
+			"name": "transcription.json",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "https://iphonetelavivi.co.il/_LegoTech/SubsCam/API/uploads/received/11876/transcription.json?ACCOUNT_ID",
+					"protocol": "https",
+					"host": [
+						"iphonetelavivi",
+						"co",
+						"il"
+					],
+					"path": [
+						"_LegoTech",
+						"SubsCam",
+						"API",
+						"uploads",
+						"received",
+						"11876",
+						"transcription.json"
+					],
+					"query": [
+						{
+							"key": "ACCOUNT_ID",
+							"value": null,
+							"description": "string\n"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "transcription.state",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "https://www.iphonetelavivi.co.il/_LegoTech/SubsCam/API/6.0.0/transcription_state.php?transcriptionId=11876",
+					"protocol": "https",
+					"host": [
+						"www",
+						"iphonetelavivi",
+						"co",
+						"il"
+					],
+					"path": [
+						"_LegoTech",
+						"SubsCam",
+						"API",
+						"6.0.0",
+						"transcription_state.php"
+					],
+					"query": [
+						{
+							"key": "transcriptionId",
+							"value": "11876"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "user_get",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "https://iphonetelavivi.co.il/_LegoTech/SubsCam/API/6.0.0/get_user.php?ACCOUNT_ID=29cdf2ba28912a5a9985f7400c4e0ec5f2f3ea95da6fd49203b6ce4577d16d5f",
+					"protocol": "https",
+					"host": [
+						"iphonetelavivi",
+						"co",
+						"il"
+					],
+					"path": [
+						"_LegoTech",
+						"SubsCam",
+						"API",
+						"6.0.0",
+						"get_user.php"
+					],
+					"query": [
+						{
+							"key": "ACCOUNT_ID",
+							"value": "29cdf2ba28912a5a9985f7400c4e0ec5f2f3ea95da6fd49203b6ce4577d16d5f"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "user_post",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "https://iphonetelavivi.co.il/_LegoTech/SubsCam/API/6.0.0/post_user.php?ACCOUNT_ID=29cdf2ba28912a5a9985f7400c4e0ec5f2f3ea95da6fd49203b6ce4577d16d5f&APP_VERSION&DEVICE_NAME&DEVICE_MODEL&DEVICE_TOKEN&DEVICE_LOCAL&SYSTEM_LOCAL",
+					"protocol": "https",
+					"host": [
+						"iphonetelavivi",
+						"co",
+						"il"
+					],
+					"path": [
+						"_LegoTech",
+						"SubsCam",
+						"API",
+						"6.0.0",
+						"post_user.php"
+					],
+					"query": [
+						{
+							"key": "ACCOUNT_ID",
+							"value": "29cdf2ba28912a5a9985f7400c4e0ec5f2f3ea95da6fd49203b6ce4577d16d5f"
+						},
+						{
+							"key": "APP_VERSION",
+							"value": null,
+							"description": "example 6.1.1"
+						},
+						{
+							"key": "DEVICE_NAME",
+							"value": null,
+							"description": "the name of the device user gave him \nexample \"Ofir's iPhone\""
+						},
+						{
+							"key": "DEVICE_MODEL",
+							"value": null,
+							"description": "iPhone, iPad, Mac, Web"
+						},
+						{
+							"key": "DEVICE_TOKEN",
+							"value": null,
+							"description": "string for push notifications"
+						},
+						{
+							"key": "DEVICE_LOCAL",
+							"value": null,
+							"description": "example: en, he, etc..."
+						},
+						{
+							"key": "SYSTEM_LOCAL",
+							"value": null,
+							"description": "example: en, he, etc..."
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "transcription.cancel",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "https://www.iphonetelavivi.co.il/_LegoTech/SubsCam/API/6.0.0/cancel_transcription.php?transcription_id=11876",
+					"protocol": "https",
+					"host": [
+						"www",
+						"iphonetelavivi",
+						"co",
+						"il"
+					],
+					"path": [
+						"_LegoTech",
+						"SubsCam",
+						"API",
+						"6.0.0",
+						"cancel_transcription.php"
+					],
+					"query": [
+						{
+							"key": "transcription_id",
+							"value": "11876"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "upload",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "audio_file",
+							"type": "file",
+							"src": []
+						},
+						{
+							"key": "user_id",
+							"value": "",
+							"description": "string",
+							"type": "text"
+						},
+						{
+							"key": "language",
+							"value": "",
+							"description": "optional string: 'en', 'he' etc...",
+							"type": "text"
+						},
+						{
+							"key": "translate",
+							"value": "",
+							"description": "optional string: 'en' or empty",
+							"type": "text"
+						},
+						{
+							"key": "LENGTH",
+							"value": "",
+							"description": "integer (audio file's length in seconds)",
+							"type": "text"
+						},
+						{
+							"key": "projectname",
+							"value": "",
+							"description": "string",
+							"type": "text"
+						},
+						{
+							"key": "USAGE_TYPE",
+							"value": "",
+							"description": "integer (i'll exmplain later)",
+							"type": "text"
+						},
+						{
+							"key": "model",
+							"value": "",
+							"description": "string: small, medium, large",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "https://iphonetelavivi.co.il/_LegoTech/SubsCam/API/6.0.0/upload.php",
+					"protocol": "https",
+					"host": [
+						"iphonetelavivi",
+						"co",
+						"il"
+					],
+					"path": [
+						"_LegoTech",
+						"SubsCam",
+						"API",
+						"6.0.0",
+						"upload.php"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

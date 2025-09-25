@@ -1,0 +1,296 @@
+{
+  "segments": [
+    {
+      "id": 0,
+      "start": 2.8,
+      "end": 8.68,
+      "text": " Is this the time to laugh? What are you doing?",
+      "words": [
+        {
+          "word": "Is",
+          "start": 2.8,
+          "end": 3.6
+        },
+        {
+          "word": "this",
+          "start": 3.6,
+          "end": 4.4
+        },
+        {
+          "word": "the",
+          "start": 4.4,
+          "end": 5.2
+        },
+
+        {
+          "word": "time",
+          "start": 5.2,
+          "end": 6.0
+        },
+        {
+          "word": "to",
+          "start": 6.0,
+          "end": 6.8
+        },
+        {
+          "word": "laugh?",
+          "start": 6.8,
+          "end": 7.6
+        },
+        {
+          "word": "What",
+          "start": 7.6,
+          "end": 8.4
+        },
+        {
+          "word": "are",
+          "start": 8.4,
+          "end": 9.2
+        },
+        {
+          "word": "you",
+          "start": 9.2,
+          "end": 10.0
+        },
+
+        {
+          "word": "doing?",
+          "start": 10.0,
+          "end": 10.8
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "start": 23.26,
+      "end": 25.64,
+      "text": " Oh man, even here? Are you crazy?",
+      "words": [
+        {
+          "word": "Oh",
+          "start": 23.26,
+          "end": 24.06
+        },
+        {
+          "word": "man,",
+          "start": 24.06,
+          "end": 24.86
+        },
+        {
+          "word": "even",
+          "start": 24.86,
+          "end": 25.66
+        },
+        {
+          "word": "here?",
+          "start": 25.66,
+          "end": 26.46
+        },
+
+        {
+          "word": "are",
+          "start": 26.46,
+          "end": 27.26
+        },
+
+        {
+          "word": "crazy?",
+          "start": 27.26,
+          "end": 28.06
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "start": 25.64,
+      "end": 28.44,
+      "text": " How did Mahavir die like this?",
+      "words": [
+        {
+          "word": "How",
+          "start": 28.64,
+          "end": 29.44
+        },
+        {
+          "word": "did",
+          "start": 29.44,
+          "end": 30.24
+        },
+
+        {
+          "word": "Mahavir",
+          "start": 30.24,
+          "end": 31.04
+        },
+        {
+          "word": "die",
+          "start": 31.04,
+          "end": 31.84
+        },
+        {
+          "word": "like",
+          "start": 31.84,
+          "end": 32.64
+        },
+
+        {
+          "word": "this?",
+          "start": 32.64,
+          "end": 33.44
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "start": 28.64,
+      "end": 31.14,
+      "text": " If you have already watched the movie, don't react to it.",
+      "words": [
+        {
+          "word": "If",
+          "start": 28.64,
+          "end": 29.44
+        },
+        {
+          "word": "have",
+          "start": 29.44,
+          "end": 30.24
+        },
+        {
+          "word": "already",
+          "start": 30.24,
+          "end": 31.04
+        },
+        {
+          "word": "watched",
+          "start": 31.04,
+          "end": 31.84
+        },
+        {
+          "word": "the",
+          "start": 31.84,
+          "end": 32.64
+        },
+
+        {
+          "word": "movie,",
+          "start": 32.64,
+          "end": 33.44
+        },
+
+        {
+          "word": "don't",
+          "start": 33.44,
+          "end": 34.24
+        },
+        {
+          "word": "react",
+          "start": 34.24,
+          "end": 35.04
+        },
+        {
+          "word": "to",
+          "start": 35.04,
+          "end": 35.84
+        },
+        {
+          "word": "it.",
+          "start": 35.84,
+          "end": 36.64
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "start": 31.54,
+      "end": 32.74,
+      "text": " Okay, fine.",
+      "words": [
+        {
+          "word": "Okay,",
+          "start": 31.54,
+          "end": 32.34
+        },
+        {
+          "word": "fine.",
+          "start": 32.34,
+          "end": 33.14
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "start": 37.8,
+      "end": 44.74,
+      "text": " See, I told you.",
+      "words": [
+        {
+          "word": "See,",
+          "start": 37.8,
+          "end": 38.6
+        },
+        {
+          "word": "I",
+          "start": 38.6,
+          "end": 39.4
+        },
+
+        {
+          "word": "told",
+          "start": 39.4,
+          "end": 40.2
+        },
+        {
+          "word": "you.",
+          "start": 40.2,
+          "end": 41.0
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "start": 47.42,
+      "end": 50.52,
+      "text": " Are you crazy? What a crazy person.",
+      "words": [
+        {
+          "word": "Are",
+          "start": 47.42,
+          "end": 48.22
+        },
+        {
+          "word": "you",
+          "start": 48.22,
+          "end": 49.02
+        },
+
+        {
+          "word": "crazy?",
+          "start": 49.02,
+          "end": 49.82
+        },
+
+        {
+          "word": "What",
+          "start": 49.82,
+          "end": 50.62
+        },
+        {
+          "word": "a",
+          "start": 50.62,
+          "end": 51.42
+        },
+        {
+          "word": "crazy",
+          "start": 51.42,
+          "end": 52.22
+        },
+        {
+          "word": "person.",
+          "start": 52.22,
+          "end": 53.02
+        }
+      ]
+    }
+  ]
+}
