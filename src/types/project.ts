@@ -33,7 +33,7 @@ export interface Project {
   thumbnailUrl?: string;
   createdAt: string;
   updatedAt: string;
-  videoUrl?: string;
+  srcUrl?: string;
   exportedVideoUrl?: string;
   exportJobId?: string;
 }

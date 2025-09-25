@@ -46,7 +46,7 @@ export default function HomePage() {
               className="bg-primary hover:bg-primary/90 text-primary-foreground"
               size="lg"
             >
-              <Link href="/projects/new-no-workers">
+              <Link href="/projects/new">
                 <Plus className="w-5 h-5 mr-2" />
                 Create New Project
               </Link>

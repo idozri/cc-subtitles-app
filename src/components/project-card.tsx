@@ -25,7 +25,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Project, ProjectStatus } from '@/types/project';
 import { useProjectStore } from '@/lib/store/project';
-import { useUploadWorker } from '@/hooks/use-upload-worker';
 import { toast } from '@/hooks/use-toast';
 import {
   Play,
@@ -135,7 +134,7 @@ export function ProjectCard({
   const [isDeleting, setIsDeleting] = useState(false);
   const [liveStatus, setLiveStatus] = useState<string | null>('transcribing');
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const { resumeUploadWithFile } = useUploadWorker();
+  // Worker functionality removed - resume uploads not supported
   const updateProject = useProjectStore((s) => s.updateProject);
   const deleteProject = useProjectStore((s) => s.deleteProject);
 
@@ -263,52 +262,13 @@ export function ProjectCard({
   const handleFileSelected: React.ChangeEventHandler<HTMLInputElement> = async (
     e
   ) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!project.uploadId || !project.s3Key) {
-      toast({
-        title: 'Cannot Resume',
-        description: 'Missing upload details for this project.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    // Validate same file by name and size
-    if (file.name !== project.fileName || file.size !== project.fileSize) {
-      toast({
-        title: 'Wrong file selected',
-        description:
-          'Please select the exact same file used for the original upload.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    try {
-      setIsResuming(true);
-      await resumeUploadWithFile(
-        file,
-        project._id,
-        project.s3Key,
-        project.uploadId,
-        project.chunkSize
-      );
-      toast({
-        title: 'Resuming Upload',
-        description: 'Continuing from the last uploaded chunk...',
-      });
-    } catch (err) {
-      console.error('Resume with file failed:', err);
-      toast({
-        title: 'Resume failed',
-        description: 'Could not resume the upload. Please try again.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsResuming(false);
-    }
+    // Resume functionality removed with workers
+    toast({
+      title: 'Resume Not Available',
+      description:
+        'Upload resumption is not supported. Please restart the upload.',
+      variant: 'destructive',
+    });
   };
 
   const isFailed =

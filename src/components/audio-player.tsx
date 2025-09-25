@@ -89,15 +89,22 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
     };
   }, [onTimeUpdate]);
 
-  // Sync external currentTime with internal state
+  // Sync external currentTime with internal state (only when external time is explicitly set and meaningful)
   useEffect(() => {
-    if (Math.abs(currentTime - internalCurrentTime) > 0.5) {
+    // Only sync if currentTime is explicitly provided, not 0, and we're not currently playing
+    // This prevents conflicts when parent components pass currentTime={0} as default
+    if (
+      currentTime !== undefined &&
+      currentTime > 0 &&
+      !isPlaying &&
+      Math.abs(currentTime - internalCurrentTime) > 0.5
+    ) {
       setInternalCurrentTime(currentTime);
       if (audioRef.current) {
         audioRef.current.currentTime = currentTime;
       }
     }
-  }, [currentTime, internalCurrentTime]);
+  }, [currentTime, internalCurrentTime, isPlaying]);
 
   const togglePlay = () => {
     const audio = audioRef.current;

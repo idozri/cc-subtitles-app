@@ -377,44 +377,6 @@ export default function GeneratePage() {
             await updateProjectMutation.mutateAsync({ description: newDesc });
           }}
         />
-
-        <div className="flex flex-wrap items-center gap-4 mb-4 p-4 rounded-lg border bg-card text-card-foreground shadow-sm">
-          <div className="flex flex-wrap items-center gap-4 text-sm">
-            <div className="flex items-center gap-2">
-              <FileVideo className="h-4 w-4 text-muted-foreground" />
-              <span
-                className="font-medium truncate max-w-[240px]"
-                title={project?.fileName}
-              >
-                {project?.fileName}
-              </span>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Languages className="h-4 w-4 text-muted-foreground" />
-            <span>
-              {originalLanguage?.name || originalLanguageCode || 'Unknown'}
-            </span>
-          </div>
-          {project?.duration && (
-            <div className="flex items-center gap-2">
-              <Clock className="h-4 w-4 text-muted-foreground" />
-              <span>{project.duration}</span>
-            </div>
-          )}
-          <div className="flex items-center gap-2">
-            <Activity className="h-4 w-4 text-muted-foreground" />
-            <span className="capitalize">{project?.status}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-            <span>
-              {project?.createdAt
-                ? new Date(project.createdAt).toLocaleDateString()
-                : ''}
-            </span>
-          </div>
-        </div>
       </div>
 
       {/* Desktop grid: left editor, right translations + settings */}
@@ -422,7 +384,7 @@ export default function GeneratePage() {
         {/* Left: video + lines (stacked) */}
         <div className="lg:col-span-8 order-2 lg:order-1">
           <TranscriptionEditor
-            videoSrc={project?.videoUrl!}
+            videoSrc={project?.srcUrl!}
             transcription={data!}
             initialFontFamily={defaultFont}
             projectId={project?._id}
@@ -436,156 +398,196 @@ export default function GeneratePage() {
         </div>
 
         {/* Right: translations and settings */}
-        <div className="relative lg:col-span-4 space-y-4 order-1 lg:order-2">
+        <div className="relative lg:col-span-4 space-y-4 order-1 lg:order-2 ">
           <div className="lg:sticky lg:top-0 space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Translations</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center gap-3">
-                  {originalLanguage?.image ? (
-                    <img
-                      src={`/assets/flags/${originalLanguage.image}`}
-                      alt={`${originalLanguage.name} flag`}
-                      className="w-6 h-6 rounded-sm"
-                    />
-                  ) : (
-                    <span className="text-xl">
-                      {originalLanguage?.flag || '🏳️'}
-                    </span>
-                  )}
-                  <div>
-                    <p className="text-sm text-muted-foreground">
-                      Original language
-                    </p>
-                    <p className="font-medium">
-                      {originalLanguage?.name ||
-                        originalLanguageCode ||
-                        'Unknown'}
-                    </p>
-                  </div>
-                  <div className="ml-auto flex items-center gap-2">
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <div>
-                            <Switch
-                              checked={
-                                !!visibleCodes[originalLanguageCode || '']
-                              }
-                              disabled={
-                                !canToggleLanguage(
-                                  originalLanguageCode || '',
-                                  false
-                                )
-                              }
-                              onCheckedChange={(v) => {
-                                const languageCode = originalLanguageCode || '';
-                                if (canToggleLanguage(languageCode, !!v)) {
-                                  setVisibleCodes((prev) => ({
-                                    ...prev,
-                                    [languageCode]: !!v,
-                                  }));
-                                }
-                              }}
-                            />
-                          </div>
-                        </TooltipTrigger>
-                        {!canToggleLanguage(
-                          originalLanguageCode || '',
-                          false
-                        ) && (
-                          <TooltipContent>
-                            <p>At least one language must be enabled</p>
-                          </TooltipContent>
-                        )}
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
-                </div>
-
-                {Object.keys(translationLanguageNames).length > 0 && (
-                  <div className="space-y-3">
-                    {Object.entries(translationLanguageNames).map(
-                      ([code, name]) => {
-                        const lang = findLanguageByAnyCode(code);
-                        return (
-                          <div
-                            key={code}
-                            className="flex items-center gap-3 py-4"
-                          >
-                            {lang?.image ? (
-                              <img
-                                src={`/assets/flags/${lang.image}`}
-                                alt={`${lang.name} flag`}
-                                className="w-6 h-6 rounded-sm"
-                              />
-                            ) : (
-                              <span className="text-xl">
-                                {lang?.flag || '🌐'}
-                              </span>
-                            )}
-                            <p className="font-medium">{name}</p>
-                            <div className="ml-auto flex items-center gap-2">
-                              <TooltipProvider>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <div>
-                                      <Switch
-                                        checked={!!visibleCodes[code]}
-                                        disabled={
-                                          !canToggleLanguage(code, false)
-                                        }
-                                        onCheckedChange={(v) => {
-                                          if (canToggleLanguage(code, !!v)) {
-                                            setVisibleCodes((prev) => ({
-                                              ...prev,
-                                              [code]: !!v,
-                                            }));
-                                          }
-                                        }}
-                                      />
-                                    </div>
-                                  </TooltipTrigger>
-                                  {!canToggleLanguage(code, false) && (
-                                    <TooltipContent>
-                                      <p>
-                                        At least one language must be enabled
-                                      </p>
-                                    </TooltipContent>
-                                  )}
-                                </Tooltip>
-                              </TooltipProvider>
-                            </div>
-                          </div>
-                        );
-                      }
-                    )}
-                  </div>
-                )}
-
-                <div className="flex items-center gap-3">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setPickerOpen(true)}
-                    disabled={hasUnsavedChanges}
-                    title={
-                      hasUnsavedChanges
-                        ? 'Save changes before adding a translation'
-                        : undefined
-                    }
+            <div className="flex flex-wrap items-center gap-4 mb-4 p-4 rounded-lg border bg-card text-card-foreground shadow-sm">
+              <div className="flex flex-wrap items-center gap-4 text-sm">
+                <div className="flex items-center gap-2">
+                  <FileVideo className="h-4 w-4 text-muted-foreground" />
+                  <span
+                    className="font-medium truncate max-w-[240px]"
+                    title={project?.fileName}
                   >
-                    <span className="text-xl">🌐</span>
-                    Add translation
-                  </Button>
+                    {project?.fileName}
+                  </span>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+              <div className="flex items-center gap-2">
+                <Languages className="h-4 w-4 text-muted-foreground" />
+                <span>
+                  {originalLanguage?.name || originalLanguageCode || 'Unknown'}
+                </span>
+              </div>
+              {project?.duration && (
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                  <span>{project.duration}</span>
+                </div>
+              )}
+              <div className="flex items-center gap-2">
+                <Activity className="h-4 w-4 text-muted-foreground" />
+                <span className="capitalize">{project?.status}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+                <span>
+                  {project?.createdAt
+                    ? new Date(project.createdAt).toLocaleDateString()
+                    : ''}
+                </span>
+              </div>
+            </div>
+            <div className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Translations</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    {originalLanguage?.image ? (
+                      <img
+                        src={`/assets/flags/${originalLanguage.image}`}
+                        alt={`${originalLanguage.name} flag`}
+                        className="w-6 h-6 rounded-sm"
+                      />
+                    ) : (
+                      <span className="text-xl">
+                        {originalLanguage?.flag || '🏳️'}
+                      </span>
+                    )}
+                    <div>
+                      <p className="text-sm text-muted-foreground">
+                        Original language
+                      </p>
+                      <p className="font-medium">
+                        {originalLanguage?.name ||
+                          originalLanguageCode ||
+                          'Unknown'}
+                      </p>
+                    </div>
+                    <div className="ml-auto flex items-center gap-2">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div>
+                              <Switch
+                                checked={
+                                  !!visibleCodes[originalLanguageCode || '']
+                                }
+                                disabled={
+                                  !canToggleLanguage(
+                                    originalLanguageCode || '',
+                                    false
+                                  )
+                                }
+                                onCheckedChange={(v) => {
+                                  const languageCode =
+                                    originalLanguageCode || '';
+                                  if (canToggleLanguage(languageCode, !!v)) {
+                                    setVisibleCodes((prev) => ({
+                                      ...prev,
+                                      [languageCode]: !!v,
+                                    }));
+                                  }
+                                }}
+                              />
+                            </div>
+                          </TooltipTrigger>
+                          {!canToggleLanguage(
+                            originalLanguageCode || '',
+                            false
+                          ) && (
+                            <TooltipContent>
+                              <p>At least one language must be enabled</p>
+                            </TooltipContent>
+                          )}
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+                  </div>
 
-            {/* External settings card for desktop */}
-            {/* <RightSettings /> */}
+                  {Object.keys(translationLanguageNames).length > 0 && (
+                    <div className="space-y-3">
+                      {Object.entries(translationLanguageNames).map(
+                        ([code, name]) => {
+                          const lang = findLanguageByAnyCode(code);
+                          return (
+                            <div
+                              key={code}
+                              className="flex items-center gap-3 py-4"
+                            >
+                              {lang?.image ? (
+                                <img
+                                  src={`/assets/flags/${lang.image}`}
+                                  alt={`${lang.name} flag`}
+                                  className="w-6 h-6 rounded-sm"
+                                />
+                              ) : (
+                                <span className="text-xl">
+                                  {lang?.flag || '🌐'}
+                                </span>
+                              )}
+                              <p className="font-medium">{name}</p>
+                              <div className="ml-auto flex items-center gap-2">
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <div>
+                                        <Switch
+                                          checked={!!visibleCodes[code]}
+                                          disabled={
+                                            !canToggleLanguage(code, false)
+                                          }
+                                          onCheckedChange={(v) => {
+                                            if (canToggleLanguage(code, !!v)) {
+                                              setVisibleCodes((prev) => ({
+                                                ...prev,
+                                                [code]: !!v,
+                                              }));
+                                            }
+                                          }}
+                                        />
+                                      </div>
+                                    </TooltipTrigger>
+                                    {!canToggleLanguage(code, false) && (
+                                      <TooltipContent>
+                                        <p>
+                                          At least one language must be enabled
+                                        </p>
+                                      </TooltipContent>
+                                    )}
+                                  </Tooltip>
+                                </TooltipProvider>
+                              </div>
+                            </div>
+                          );
+                        }
+                      )}
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-3">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setPickerOpen(true)}
+                      disabled={hasUnsavedChanges}
+                      title={
+                        hasUnsavedChanges
+                          ? 'Save changes before adding a translation'
+                          : undefined
+                      }
+                    >
+                      <span className="text-xl">🌐</span>
+                      Add translation
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* External settings card for desktop */}
+              {/* <RightSettings /> */}
+            </div>
           </div>
         </div>
       </div>

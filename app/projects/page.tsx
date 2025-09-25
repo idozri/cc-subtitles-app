@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useProjectStore } from '@/lib/store/project';
-import { useUploadWorker } from '@/hooks/use-upload-worker';
+// Worker functionality removed
 import { ProjectCard } from '@/components/project-card';
 import { Button } from '@/components/ui/button';
 import { Plus, RefreshCw } from 'lucide-react';
@@ -13,7 +13,7 @@ import { useAuth } from '@/hooks/useAuth';
 export default function ProjectsPage() {
   const { projects, isLoading, error, fetchProjects, deleteProject } =
     useProjectStore();
-  const { activeUploads, uploadProgress, cancelUpload } = useUploadWorker();
+  // Worker functionality removed
   const router = useRouter();
   const { toast } = useToast();
   const { user } = useAuth();
@@ -43,25 +43,11 @@ export default function ProjectsPage() {
   };
 
   const handleCreateNew = () => {
-    router.push('/projects/new-no-workers');
+    router.push('/projects/new');
   };
 
   const handleCancelProject = async (projectId: string) => {
     try {
-      // Find the project to get its upload status
-      const project = projects.find((p) => p._id === projectId);
-      if (!project) return;
-
-      // Find active upload for this project
-      const upload = Array.from(activeUploads.values()).find(
-        (u) => u.projectId === projectId
-      );
-
-      // Cancel upload if it's active
-      if (upload && upload.status === 'uploading') {
-        await cancelUpload(upload.uploadId);
-      }
-
       // Delete project from backend
       const response = await fetch(`/api/projects/${projectId}`, {
         method: 'DELETE',
@@ -151,47 +137,15 @@ export default function ProjectsPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {projects.map((project) => {
-            // Check if this project has an active upload by project ID
-            const upload = Array.from(activeUploads.values()).find(
-              (u) => u.projectId === project._id
-            );
-            // Prefer lookup by uploadId; if missing, fall back to projectId scan
-            let progress = uploadProgress.get(upload?.uploadId || '');
-            if (!progress) {
-              progress = Array.from(uploadProgress.values()).find(
-                (p) => p.projectId === project._id
-              );
-            }
-
-            // Debug logging
-            console.log(`Project ${project._id}:`, {
-              upload: upload
-                ? { uploadId: upload.uploadId, status: upload.status }
-                : null,
-              progress: progress
-                ? {
-                    progress: progress.progress,
-                    currentChunk: progress.currentChunk,
-                    totalChunks: progress.totalChunks,
-                  }
-                : null,
-              allProgressKeys: Array.from(uploadProgress.keys()),
-              allActiveUploads: Array.from(activeUploads.entries()).map(
-                ([id, u]) => ({ id, projectId: u.projectId, status: u.status })
-              ),
-            });
-
-            return (
-              <ProjectCard
-                key={project._id}
-                project={project}
-                uploadStatus={upload ? 'uploading' : project.status}
-                uploadProgress={progress?.progress || 0}
-                onCancelProject={handleCancelProject}
-              />
-            );
-          })}
+          {projects.map((project) => (
+            <ProjectCard
+              key={project._id}
+              project={project}
+              uploadStatus={project.status}
+              uploadProgress={0}
+              onCancelProject={handleCancelProject}
+            />
+          ))}
         </div>
       )}
     </div>

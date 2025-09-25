@@ -62,7 +62,7 @@ const ProjectInterface: React.FC<ProjectInterfaceProps> = ({ projectId }) => {
         const projectData = await response.json();
 
         setProjectName(projectData.name || 'Untitled Project');
-        setVideoUrl(projectData.videoUrl || '/mock-video-url');
+        setVideoUrl(projectData.srcUrl || '/mock-video-url');
 
         // Use the language tracks from the API response
         const tracks: LanguageTrack[] =

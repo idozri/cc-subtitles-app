@@ -6,7 +6,7 @@ import FileUpload from './file-upload';
 import LanguagePreSubmit from './language-pre-submit';
 import { useToast } from '@/hooks/use-toast';
 import { useProjectStore } from '@/lib/store/project';
-import { useUploadWorker } from '@/hooks/use-upload-worker';
+// Worker functionality removed
 import { CreateProjectData } from '@/types/project';
 import { cn } from '@/lib/utils';
 
@@ -19,7 +19,7 @@ const FileUploadInterface: React.FC = () => {
   const router = useRouter();
   const { toast } = useToast();
   const { addProject } = useProjectStore();
-  const { startUpload } = useUploadWorker();
+  // Worker functionality removed - direct upload not supported in this component
 
   const handleFileSelect = (file: File) => {
     setSelectedFile(file);
@@ -74,21 +74,14 @@ const FileUploadInterface: React.FC = () => {
       // Add the new project to the store
       addProject(project);
 
-      // Start the upload using the worker
-      const uploadId = await startUpload(opts.file, project._id, upload.key);
+      // Worker functionality removed - redirect to no-workers page
+      toast({
+        title: 'Project Created Successfully!',
+        description: 'Redirecting to upload page...',
+      });
 
-      if (uploadId) {
-        toast({
-          title: 'Project Created Successfully!',
-          description:
-            'Your video is now uploading. You can navigate away from this page.',
-        });
-
-        // Redirect to the projects dashboard
-        router.push('/projects');
-      } else {
-        throw new Error('Failed to start upload');
-      }
+      // Redirect to the no-workers upload page
+      router.push(`/projects/new?projectId=${project._id}&s3Key=${upload.key}`);
     } catch (error) {
       console.error('Error creating project:', error);
       toast({
