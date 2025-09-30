@@ -88,7 +88,7 @@ export default function ProjectsPage() {
 
   return (
     <div className="container mx-auto p-6">
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
         <div>
           <h1 className="text-3xl font-bold">My Projects</h1>
           <p className="text-muted-foreground mt-2">

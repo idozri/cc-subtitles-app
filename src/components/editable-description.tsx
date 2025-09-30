@@ -79,7 +79,7 @@ export function EditableDescription({
     return (
       <div
         ref={containerRef}
-        className={cn('flex items-start gap-2', className)}
+        className={cn('flex items-start gap-2 mb-4', className)}
       >
         <Textarea
           ref={inputRef}

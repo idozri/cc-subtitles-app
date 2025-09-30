@@ -166,7 +166,6 @@ export function ProjectCard({
     socket.emit('project:subscribe', project._id);
 
     const onUpdate = (payload: any) => {
-      debugger;
       if (payload?.projectId !== project._id) return;
       if (payload?.status) setLiveStatus(payload.status);
     };

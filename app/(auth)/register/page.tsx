@@ -237,9 +237,7 @@ function RegisterPageFallback() {
           <CardTitle className="text-2xl font-bold text-center">
             Create Account
           </CardTitle>
-          <CardDescription className="text-center">
-            Loading...
-          </CardDescription>
+          <CardDescription className="text-center">Loading...</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex justify-center">

@@ -221,9 +221,7 @@ function LoginPageFallback() {
           <CardTitle className="text-2xl font-bold text-center">
             Welcome back
           </CardTitle>
-          <CardDescription className="text-center">
-            Loading...
-          </CardDescription>
+          <CardDescription className="text-center">Loading...</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex justify-center">

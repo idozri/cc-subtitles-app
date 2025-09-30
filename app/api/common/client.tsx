@@ -22,7 +22,6 @@ if (typeof window !== 'undefined') {
     (response) => response,
     async (error) => {
       const originalRequest = error.config;
-      debugger;
       // Prevent infinite loop and avoid refreshing on auth endpoints
       if (
         error.response?.status === 401 &&

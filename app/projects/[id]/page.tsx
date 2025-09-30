@@ -245,7 +245,7 @@ export default function GeneratePage() {
   }
 
   return (
-    <div className="container mx-auto p-4 lg:p-6">
+    <div className="container mx-auto p-4 lg:p-6 pb-6 sm:pb-4 lg:pb-6">
       {/* Provide translation language names to children via window for reuse */}
       {(() => {
         if (typeof window !== 'undefined') {
@@ -399,7 +399,7 @@ export default function GeneratePage() {
 
         {/* Right: translations and settings */}
         <div className="relative lg:col-span-4 space-y-4 order-1 lg:order-2 ">
-          <div className="lg:sticky lg:top-0 space-y-4">
+          <div className="lg:sticky lg:top-4 space-y-4">
             <div className="flex flex-wrap items-center gap-4 mb-4 p-4 rounded-lg border bg-card text-card-foreground shadow-sm">
               <div className="flex flex-wrap items-center gap-4 text-sm">
                 <div className="flex items-center gap-2">
@@ -455,10 +455,7 @@ export default function GeneratePage() {
                         {originalLanguage?.flag || '🏳️'}
                       </span>
                     )}
-                    <div>
-                      <p className="text-sm text-muted-foreground">
-                        Original language
-                      </p>
+                    <div className="flex items-center gap-2">
                       <p className="font-medium">
                         {originalLanguage?.name ||
                           originalLanguageCode ||

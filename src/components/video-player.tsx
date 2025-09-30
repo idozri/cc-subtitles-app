@@ -61,12 +61,61 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const hideControlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isSeekingRef = useRef(false);
+  const lastTapTimeRef = useRef<number>(0);
+  const lastTapSideRef = useRef<'left' | 'right' | 'center' | null>(null);
   const [videoBox, setVideoBox] = useState<{
     left: number;
     top: number;
     width: number;
     height: number;
   } | null>(null);
+
+  // Keyboard controls for desktop
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only handle if the video player container is focused or if no input is focused
+      const activeElement = document.activeElement;
+      const isInputFocused =
+        activeElement &&
+        (activeElement.tagName === 'INPUT' ||
+          activeElement.tagName === 'TEXTAREA' ||
+          (activeElement as HTMLElement).contentEditable === 'true');
+
+      if (isInputFocused) return;
+
+      const video = videoRef.current;
+      if (!video) return;
+
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        // Inline skip logic to ensure we have current values
+        isSeekingRef.current = true;
+        const newTime = Math.max(0, Math.min(duration, video.currentTime - 10));
+        video.currentTime = newTime;
+        setInternalCurrentTime(newTime);
+        onTimeUpdate(newTime);
+        showControlsTemporarily();
+        setTimeout(() => {
+          isSeekingRef.current = false;
+        }, 100);
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        // Inline skip logic to ensure we have current values
+        isSeekingRef.current = true;
+        const newTime = Math.max(0, Math.min(duration, video.currentTime + 10));
+        video.currentTime = newTime;
+        setInternalCurrentTime(newTime);
+        onTimeUpdate(newTime);
+        showControlsTemporarily();
+        setTimeout(() => {
+          isSeekingRef.current = false;
+        }, 100);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [duration, onTimeUpdate]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -273,10 +322,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     if (!video) return;
 
     isSeekingRef.current = true;
-    video.currentTime = Math.max(
+    const newTime = Math.max(
       0,
       Math.min(duration, video.currentTime + seconds)
     );
+    video.currentTime = newTime;
+    setInternalCurrentTime(newTime);
+    onTimeUpdate(newTime);
     showControlsTemporarily();
 
     // Reset the seeking flag after a short delay
@@ -340,6 +392,58 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     scheduleHideControls();
   };
 
+  // Mobile double-tap gestures
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length !== 1) return;
+
+    const touch = e.touches[0];
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+
+    const x = touch.clientX - rect.left;
+    const y = touch.clientY - rect.top;
+    const containerWidth = rect.width;
+    const containerHeight = rect.height;
+
+    // Determine which side was tapped
+    let tapSide: 'left' | 'right' | 'center';
+    if (x < containerWidth * 0.3) {
+      tapSide = 'left';
+    } else if (x > containerWidth * 0.7) {
+      tapSide = 'right';
+    } else {
+      tapSide = 'center';
+    }
+
+    const now = Date.now();
+    const timeSinceLastTap = now - lastTapTimeRef.current;
+    const DOUBLE_TAP_DELAY = 300; // milliseconds
+
+    if (
+      timeSinceLastTap < DOUBLE_TAP_DELAY &&
+      lastTapSideRef.current === tapSide
+    ) {
+      // Double tap detected
+      e.preventDefault();
+
+      if (tapSide === 'left') {
+        skip(-10);
+      } else if (tapSide === 'right') {
+        skip(10);
+      } else if (tapSide === 'center') {
+        toggleFullscreen();
+      }
+
+      // Reset to prevent triple tap
+      lastTapTimeRef.current = 0;
+      lastTapSideRef.current = null;
+    } else {
+      // First tap or different side
+      lastTapTimeRef.current = now;
+      lastTapSideRef.current = tapSide;
+    }
+  };
+
   const preloadedClass = getPreloadedFontClassName(subtitleFontFamily);
 
   // Compute subtitle font-size relative to the actual rendered video height
@@ -374,6 +478,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       onMouseMove={handleMouseMove}
+      onTouchStart={handleTouchStart}
     >
       <video
         ref={videoRef}
@@ -520,9 +625,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         </div>
 
         {/* Bottom Controls */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 bg-video-controls">
+        <div className="absolute bottom-0 left-0 right-0 p-2 sm:p-4 bg-background/50">
           {/* Progress Bar */}
-          <div className="mb-4">
+          <div className="mb-2 sm:mb-4">
             <Slider
               value={[internalCurrentTime]}
               max={duration}
@@ -534,7 +639,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
           {/* Control Buttons */}
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 sm:gap-2">
               <Button
                 variant="ghost"
                 size="icon"
@@ -570,20 +675,20 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
               </Button>
             </div>
 
-            <div className="flex items-center gap-2 text-white text-sm">
+            <div className="flex items-center gap-1 sm:gap-2 text-white text-xs sm:text-sm">
               <span>{formatTime(internalCurrentTime)}</span>
               <span>/</span>
               <span>{formatTime(duration)}</span>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 sm:gap-2">
               <Volume2 className="w-4 h-4 text-white" />
               <Slider
                 value={[volume]}
                 max={1}
                 step={0.1}
                 onValueChange={handleVolumeChange}
-                className="w-20 transition-all duration-150 ease-in-out"
+                className="w-12 sm:w-20 transition-all duration-150 ease-in-out"
               />
 
               <Button
