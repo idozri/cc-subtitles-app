@@ -65,7 +65,7 @@ interface TranscriptionJson {
 }
 
 interface TranscriptionEditorProps {
-  videoSrc: string;
+  videoSrc?: string;
   transcription: TranscriptionJson;
   initialFontFamily?: string;
   projectId?: string;
@@ -75,8 +75,16 @@ interface TranscriptionEditorProps {
   onDirtyChange?: (dirty: boolean) => void;
   initialExportJobId?: string | null;
   initialExportedUrl?: string | null;
-  layout?: 'split' | 'stacked';
+  layout?: 'split' | 'stacked' | 'lines-only';
   showDesktopSettings?: boolean;
+  // Hook state props
+  currentTime?: number;
+  setCurrentTime?: (time: number) => void;
+  activeLine?: TranscriptionLineData | undefined;
+  activeLineText?: string;
+  activeSubtitles?: Array<{ code: string; text: string }>;
+  lines?: TranscriptionLineData[];
+  setLines?: React.Dispatch<React.SetStateAction<TranscriptionLineData[]>>;
 }
 
 const clamp = (value: number, min: number, max: number): number =>
@@ -96,13 +104,30 @@ const TranscriptionEditor: React.FC<TranscriptionEditorProps> = React.memo(
     initialExportedUrl,
     layout = 'split',
     showDesktopSettings = true,
+    currentTime: externalCurrentTime,
+    setCurrentTime: externalSetCurrentTime,
+    activeLine: externalActiveLine,
+    activeLineText: externalActiveLineText,
+    activeSubtitles: externalActiveSubtitles,
+    lines: externalLines,
+    setLines: externalSetLines,
   }) => {
     const router = useRouter();
     const { toast } = useToast();
     const [isExporting, setIsExporting] = useState(false);
     const [isDownloading, setIsDownloading] = useState(false);
-    const [currentTime, setCurrentTime] = useState(0);
-    const [lines, setLines] = useState<TranscriptionLineData[]>([]);
+    const [internalCurrentTime, setInternalCurrentTime] = useState(0);
+
+    // Use external currentTime if provided, otherwise use internal state
+    const currentTime = externalCurrentTime ?? internalCurrentTime;
+    const setCurrentTime = externalSetCurrentTime ?? setInternalCurrentTime;
+
+    // Use external lines if provided, otherwise use internal state
+    const [internalLines, setInternalLines] = useState<TranscriptionLineData[]>(
+      []
+    );
+    const lines = externalLines ?? internalLines;
+    const setLines = externalSetLines ?? setInternalLines;
     const [cropLineId, setCropLineId] = useState<number | null>(null);
     const [dragOverId, setDragOverId] = useState<number | null>(null);
     const [dragSourceId, setDragSourceId] = useState<number | null>(null);
@@ -273,7 +298,7 @@ const TranscriptionEditor: React.FC<TranscriptionEditorProps> = React.memo(
       setIsDirty(false);
       setUndoStack([]);
       setRedoStack([]);
-    }, [transcription]);
+    }, [transcription, setLines]);
 
     // Notify parent when dirty state changes
     useEffect(() => {
@@ -344,25 +369,50 @@ const TranscriptionEditor: React.FC<TranscriptionEditorProps> = React.memo(
     }, [undoStack, redoStack]);
 
     const activeId = useMemo(() => {
+      // Use external activeLine if provided
+      if (externalActiveLine) {
+        console.log('Using external activeLine:', externalActiveLine.id);
+        return externalActiveLine.id;
+      }
+
       // Find all lines that could be active at this time
       const candidates = lines.filter(
         (l) => currentTime >= l.start && currentTime <= l.end
       );
 
+      console.log('ActiveId calculation:', {
+        currentTime,
+        candidatesCount: candidates.length,
+        candidates: candidates.map((c) => ({
+          id: c.id,
+          start: c.start,
+          end: c.end,
+        })),
+      });
+
       // If multiple candidates, prefer the one that starts closest to currentTime
       if (candidates.length > 1) {
-        return candidates.reduce((closest, current) =>
+        const selected = candidates.reduce((closest, current) =>
           Math.abs(current.start - currentTime) <
           Math.abs(closest.start - currentTime)
             ? current
             : closest
-        ).id;
+        );
+        console.log('Multiple candidates, selected:', selected.id);
+        return selected.id;
       }
 
-      return candidates[0]?.id ?? -1;
-    }, [currentTime, lines]);
+      const result = candidates[0]?.id ?? -1;
+      console.log('Single candidate or none, result:', result);
+      return result;
+    }, [currentTime, lines, externalActiveLine]);
 
     const activeLine = useMemo(() => {
+      // Use external activeLine if provided
+      if (externalActiveLine) {
+        return externalActiveLine;
+      }
+
       // Find all lines that could be active at this time
       const candidates = lines.filter(
         (l) => currentTime >= l.start && currentTime <= l.end
@@ -379,9 +429,14 @@ const TranscriptionEditor: React.FC<TranscriptionEditorProps> = React.memo(
       }
 
       return candidates[0];
-    }, [currentTime, lines]);
+    }, [currentTime, lines, externalActiveLine]);
 
     const activeLineText = useMemo(() => {
+      // Use external activeLineText if provided
+      if (externalActiveLineText !== undefined) {
+        return externalActiveLineText;
+      }
+
       if (!activeLine) return '';
       const src = (sourceLanguageCode || '').trim();
       const codes = gatherVisibleLanguages();
@@ -390,7 +445,12 @@ const TranscriptionEditor: React.FC<TranscriptionEditorProps> = React.memo(
         return activeLine.text ?? '';
       }
       return '';
-    }, [activeLine, sourceLanguageCode, visibleLanguages]);
+    }, [
+      activeLine,
+      sourceLanguageCode,
+      visibleLanguages,
+      externalActiveLineText,
+    ]);
 
     // Cropping is only allowed when there are no translations at all
     const hasAnyTranslations = useMemo(
@@ -431,8 +491,8 @@ const TranscriptionEditor: React.FC<TranscriptionEditorProps> = React.memo(
               segments: [
                 {
                   id: String(line.id),
-                  t0: line.start,
-                  t1: line.end,
+                  start: line.start,
+                  end: line.end,
                   text: line.text,
                 },
               ],
@@ -474,43 +534,116 @@ const TranscriptionEditor: React.FC<TranscriptionEditorProps> = React.memo(
       </div>
     );
 
-    // Auto-scroll to active line (only after user interaction)
+    // Auto-scroll to active line
     useEffect(() => {
-      if (activeId === -1 || !scrollAreaRef.current || !hasUserInteracted)
-        return;
+      console.log('Auto-scroll effect triggered:', {
+        activeId,
+        currentTime,
+        hasScrollArea: !!scrollAreaRef.current,
+      });
 
-      const activeElement = scrollAreaRef.current.querySelector(
-        `[data-line-id="${activeId}"]`
-      );
+      if (activeId === -1 || !scrollAreaRef.current) return;
 
-      if (activeElement) {
-        // Find the viewport within the ScrollArea
-        const viewport = scrollAreaRef.current.querySelector(
-          '[data-radix-scroll-area-viewport]'
+      // Add a small delay to prevent excessive scrolling when time changes rapidly
+      const timeoutId = setTimeout(() => {
+        // Debug: Check if we can find any elements with data-line-id
+        const allLineElements =
+          scrollAreaRef.current?.querySelectorAll('[data-line-id]');
+        console.log('All line elements found:', allLineElements?.length || 0);
+
+        const activeElement = scrollAreaRef.current?.querySelector(
+          `[data-line-id="${activeId}"]`
         );
-        if (viewport) {
-          const elementRect = activeElement.getBoundingClientRect();
-          const viewportRect = viewport.getBoundingClientRect();
 
-          // Calculate if element is outside viewport
-          const isAbove = elementRect.top < viewportRect.top;
-          const isBelow = elementRect.bottom > viewportRect.bottom;
+        console.log('Looking for active element:', {
+          activeId,
+          foundElement: !!activeElement,
+          allElements: Array.from(allLineElements || []).map((el) =>
+            el.getAttribute('data-line-id')
+          ),
+        });
 
-          if (isAbove || isBelow) {
+        if (activeElement) {
+          // Try multiple approaches to ensure scrolling works
+          console.log('Attempting to scroll to active element');
+
+          // Method 1: Direct scrollIntoView on the element
+          try {
             activeElement.scrollIntoView({
               behavior: 'smooth',
               block: 'center',
+              inline: 'nearest',
             });
+            console.log('Method 1: Direct scrollIntoView completed');
+          } catch (e) {
+            console.log('Method 1 failed:', e);
           }
-        } else {
-          // Fallback to regular scrollIntoView
-          activeElement.scrollIntoView({
-            behavior: 'smooth',
-            block: 'center',
-          });
+
+          // Method 2: Find the viewport within the ScrollArea and scroll manually
+          const viewport = scrollAreaRef.current?.querySelector(
+            '[data-radix-scroll-area-viewport]'
+          );
+
+          console.log('ScrollArea viewport found:', !!viewport);
+
+          if (viewport) {
+            try {
+              const elementRect = activeElement.getBoundingClientRect();
+              const viewportRect = viewport.getBoundingClientRect();
+
+              // Calculate if element is outside viewport
+              const isAbove = elementRect.top < viewportRect.top;
+              const isBelow = elementRect.bottom > viewportRect.bottom;
+
+              console.log('Viewport check:', {
+                isAbove,
+                isBelow,
+                elementRect,
+                viewportRect,
+              });
+
+              if (isAbove || isBelow) {
+                console.log('Method 2: Manual scroll to center element');
+                const elementTop = (activeElement as HTMLElement).offsetTop;
+                const elementHeight = (activeElement as HTMLElement)
+                  .offsetHeight;
+                const viewportHeight = viewport.clientHeight;
+                const scrollTop =
+                  elementTop - viewportHeight / 2 + elementHeight / 2;
+
+                viewport.scrollTo({
+                  top: scrollTop,
+                  behavior: 'smooth',
+                });
+                console.log('Method 2: Manual scroll completed');
+              }
+            } catch (e) {
+              console.log('Method 2 failed:', e);
+            }
+          } else {
+            // Method 3: Fallback - try to scroll the scrollAreaRef itself
+            console.log('Method 3: Fallback scroll on scrollAreaRef');
+            try {
+              const elementTop = (activeElement as HTMLElement).offsetTop;
+              const elementHeight = (activeElement as HTMLElement).offsetHeight;
+              const containerHeight = scrollAreaRef.current?.clientHeight || 0;
+              const scrollTop =
+                elementTop - containerHeight / 2 + elementHeight / 2;
+
+              scrollAreaRef.current?.scrollTo({
+                top: scrollTop,
+                behavior: 'smooth',
+              });
+              console.log('Method 3: Fallback scroll completed');
+            } catch (e) {
+              console.log('Method 3 failed:', e);
+            }
+          }
         }
-      }
-    }, [activeId, hasUserInteracted]);
+      }, 100); // 100ms delay
+
+      return () => clearTimeout(timeoutId);
+    }, [activeId]);
 
     const markDirty = useCallback(() => setIsDirty(true), []);
 
@@ -946,6 +1079,11 @@ const TranscriptionEditor: React.FC<TranscriptionEditorProps> = React.memo(
     };
 
     const activeSubtitles = useMemo(() => {
+      // Use external activeSubtitles if provided
+      if (externalActiveSubtitles) {
+        return externalActiveSubtitles;
+      }
+
       const codes = gatherVisibleLanguages();
       const out: Array<{ code: string; text: string }> = [];
       if (!activeLine) return out;
@@ -960,7 +1098,12 @@ const TranscriptionEditor: React.FC<TranscriptionEditorProps> = React.memo(
         }
       }
       return out;
-    }, [activeLine, sourceLanguageCode, gatherVisibleLanguages]);
+    }, [
+      activeLine,
+      sourceLanguageCode,
+      gatherVisibleLanguages,
+      externalActiveSubtitles,
+    ]);
 
     const handleExport = useCallback(async () => {
       setIsExporting(true);
@@ -1112,29 +1255,30 @@ const TranscriptionEditor: React.FC<TranscriptionEditorProps> = React.memo(
 
     return (
       <div className="space-y-4 relative">
-        <Card className="sticky top-4 z-10">
-          <CardContent className="p-0">
-            <div className="relative">
-              <VideoPlayer
-                src={videoSrc}
-                currentTime={currentTime}
-                onTimeUpdate={(time) => {
-                  setCurrentTime(time);
-                  setHasUserInteracted(true);
-                }}
-                className="w-full"
-                activeLineText={activeLineText}
-                activeSubtitles={activeSubtitles}
-                subtitleColor={color1}
-                subtitleSecondaryColor={color2}
-                subtitleFontFamily={fontFamily}
-                subtitleScale={subtitleScale}
-                subtitlePosition={subtitlePosition}
-                subtitleBackground={subtitleBackground}
-                subtitleOutline={subtitleOutline}
-              />
-              {/* Mobile Settings Button */}
-              {/* <div className="lg:hidden absolute top-4 right-4 z-30">
+        {/* {layout !== 'lines-only' && videoSrc && (
+          <Card className="sticky top-4 z-10">
+            <CardContent className="p-0">
+              <div className="relative">
+                <VideoPlayer
+                  src={videoSrc}
+                  currentTime={currentTime}
+                  onTimeUpdate={(time) => {
+                    setCurrentTime(time);
+                    setHasUserInteracted(true);
+                  }}
+                  className="w-full"
+                  activeLineText={activeLineText}
+                  activeSubtitles={activeSubtitles}
+                  subtitleColor={color1}
+                  subtitleSecondaryColor={color2}
+                  subtitleFontFamily={fontFamily}
+                  subtitleScale={subtitleScale}
+                  subtitlePosition={subtitlePosition}
+                  subtitleBackground={subtitleBackground}
+                  subtitleOutline={subtitleOutline}
+                /> */}
+        {/* Mobile Settings Button */}
+        {/* <div className="lg:hidden absolute top-4 right-4 z-30">
                 <Dialog
                   open={isSettingsModalOpen}
                   onOpenChange={setIsSettingsModalOpen}
@@ -1172,18 +1316,20 @@ const TranscriptionEditor: React.FC<TranscriptionEditorProps> = React.memo(
                   </DialogContent>
                 </Dialog>
               </div> */}
-              {/* Add Line Modal */}
-              <AddLineDialog
-                open={isAddLineOpen}
-                onOpenChange={setIsAddLineOpen}
-                pending={pendingNewLine}
-                onSubmit={commitNewLine}
-              />
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="text-lg sm:text-xl">
+        {/* Add Line Modal */}
+        {/* <AddLineDialog
+                  open={isAddLineOpen}
+                  onOpenChange={setIsAddLineOpen}
+                  pending={pendingNewLine}
+                  onSubmit={commitNewLine}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        )} */}
+        <Card className="relative">
+          <CardHeader className="text-lg sm:text-xl sticky top-4 bg-card z-10 rounded-t-lg outline outline-border outline-1">
+            <div className="absolute h-4 top-[80px] left-0 right-0 bottom-0 z-10 bg-card" />
             <div className="flex flex-wrap items-center justify-between gap-3">
               <CardTitle>Transcription Lines</CardTitle>
               <div className="flex items-center gap-2 flex-wrap">
@@ -1288,10 +1434,7 @@ const TranscriptionEditor: React.FC<TranscriptionEditorProps> = React.memo(
             </div>
           </CardHeader>
           <CardContent className="p-0">
-            <ScrollArea
-              ref={scrollAreaRef}
-              className="h-[calc(100vh-34rem)] lg:h-[calc(100vh-50rem)] w-full"
-            >
+            <ScrollArea ref={scrollAreaRef} className="w-full">
               <div className="space-y-3 p-4">
                 {lines.length > 0 && lines[0].start >= 0.999 && (
                   <div className="flex justify-center">

@@ -14,7 +14,11 @@ export function getProjectsSocket(): MinimalSocket {
   const { io } = require('socket.io-client');
   const client = io(`${baseUrl}/projects`, {
     withCredentials: true,
-    transports: ['websocket'],
+    transports: ['websocket', 'polling'],
+    upgrade: true,
+    rememberUpgrade: true,
+    timeout: 20000,
+    forceNew: true,
   });
   // Basic diagnostics to surface connection issues
   client.on('connect', () => {

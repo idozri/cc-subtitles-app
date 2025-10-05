@@ -99,7 +99,10 @@ function LoginForm() {
       const redirect = searchParams.get('redirect');
 
       // Login successful, redirect to protected home
-      router.replace(redirect ? `/${redirect}` : '/');
+      // Use window.location.href to force full page reload and ensure middleware runs
+      setTimeout(() => {
+        window.location.href = redirect ? `/${redirect}` : '/';
+      }, 100);
     } catch (error: any) {
       if (error.message === AUTH_ERROR_CODES.EMAIL_NOT_VERIFIED) {
         // Redirect to verify email page with email parameter
