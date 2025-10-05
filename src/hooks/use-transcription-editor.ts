@@ -247,7 +247,32 @@ export const useTranscriptionEditor = ({
         pending: s.pending,
       }))
       .sort((a, b) => a.start - b.start);
-    setLines(mapped);
+
+    // Only update if the data has actually changed
+    setLines((prevLines) => {
+      if (prevLines.length !== mapped.length) {
+        return mapped;
+      }
+
+      // Check if any segment has changed
+      const hasChanged = prevLines.some((prevLine, index) => {
+        const newLine = mapped[index];
+        if (!newLine) return true;
+
+        return (
+          prevLine.id !== newLine.id ||
+          prevLine.start !== newLine.start ||
+          prevLine.end !== newLine.end ||
+          prevLine.text !== newLine.text ||
+          JSON.stringify(prevLine.translations) !==
+            JSON.stringify(newLine.translations) ||
+          JSON.stringify(prevLine.pending) !== JSON.stringify(newLine.pending)
+        );
+      });
+
+      return hasChanged ? mapped : prevLines;
+    });
+
     setIsDirty(false);
     setUndoStack([]);
     setRedoStack([]);
@@ -264,18 +289,28 @@ export const useTranscriptionEditor = ({
       if (typeof window !== 'undefined' && (window as any).__visibleLangs) {
         const newVisibleLangs = (window as any).__visibleLangs;
         setVisibleLanguages((prev) => {
-          const hasChanged =
-            Object.keys(newVisibleLangs).some(
-              (key) => prev[key] !== newVisibleLangs[key]
-            ) ||
-            Object.keys(prev).some((key) => prev[key] !== newVisibleLangs[key]);
+          // Check if the objects are actually different to prevent unnecessary updates
+          const prevKeys = Object.keys(prev);
+          const newKeys = Object.keys(newVisibleLangs);
+
+          if (prevKeys.length !== newKeys.length) {
+            return { ...newVisibleLangs };
+          }
+
+          const hasChanged = newKeys.some(
+            (key) => prev[key] !== newVisibleLangs[key]
+          );
+
           return hasChanged ? { ...newVisibleLangs } : prev;
         });
       }
     };
 
+    // Initial update
     updateVisibility();
-    const interval = setInterval(updateVisibility, 1000);
+
+    // Use a more efficient approach with a longer interval and proper cleanup
+    const interval = setInterval(updateVisibility, 2000);
     return () => clearInterval(interval);
   }, []);
 
