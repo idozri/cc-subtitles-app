@@ -16,6 +16,10 @@ export async function POST(request: NextRequest) {
   );
 
   const responseData = await response.json();
+  
+  // Add debug logging
+  console.log('Login response status:', response.status);
+  console.log('Set-Cookie headers:', response.headers.getSetCookie());
 
   if (responseData.error) {
     return NextResponse.json(
@@ -29,6 +33,7 @@ export async function POST(request: NextRequest) {
 
   // Forward cookies from server response to client
   const setCookieHeaders = response.headers.getSetCookie();
+  console.log('Forwarding cookies:', setCookieHeaders);
   setCookieHeaders.forEach((cookie) => {
     nextResponse.headers.append('Set-Cookie', cookie);
   });

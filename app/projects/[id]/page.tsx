@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import TranscriptionEditor from '@/components/transcription-editor';
+import VideoPlayer from '@/components/video-player';
 import { Button } from '@/components/ui/button';
 import ModalLanguagePicker from '@/components/modal-language-picker';
 import { Env } from '@/lib/env';
@@ -16,6 +17,8 @@ import { findLanguage, findLanguageByAnyCode } from '@/lib/languages';
 import { Switch } from '@/components/ui';
 import { SettingsContent } from '@/components/settings-content';
 import { useVideoSettingsStore } from '@/lib/store/video-settings';
+import { useVideoPlayer } from '@/hooks/use-video-player';
+import { useTranscriptionEditor } from '@/hooks/use-transcription-editor';
 import {
   FileVideo,
   Languages,
@@ -119,6 +122,32 @@ export default function GeneratePage() {
     }
   }, [jsonFile]);
 
+  const originalLanguageCode = useMemo<string | undefined>(() => {
+    return data?.language || project?.originalLanguage || undefined;
+  }, [data?.language, project?.originalLanguage]);
+
+  // Video player hook
+  const videoPlayer = useVideoPlayer({
+    src: project?.srcUrl || '',
+    onTimeUpdate: (time) => {
+      // Update transcription editor with current time
+      // This will be handled by the transcription editor hook
+    },
+  });
+
+  // Transcription editor hook
+  const transcriptionEditor = useTranscriptionEditor({
+    transcription: data || { segments: [] },
+    projectId: project?._id,
+    sourceLanguageCode: originalLanguageCode,
+    onDirtyChange: setHasUnsavedChanges,
+  });
+
+  // Connect video player time to transcription editor
+  useEffect(() => {
+    transcriptionEditor.setCurrentTime(videoPlayer.currentTime);
+  }, [videoPlayer.currentTime, transcriptionEditor.setCurrentTime]);
+
   // Mutation for updating project
   const updateProjectMutation = useMutation({
     mutationFn: async (updates: { title?: string; description?: string }) => {
@@ -150,9 +179,16 @@ export default function GeneratePage() {
   const recentFonts = useFontsStore((s) => s.recent);
   const defaultFont = recentFonts[0] || 'Roboto';
 
-  const originalLanguageCode = useMemo<string | undefined>(() => {
-    return data?.language || project?.originalLanguage || undefined;
-  }, [data?.language, project?.originalLanguage]);
+  // Video settings from store
+  const {
+    color1,
+    color2,
+    fontFamily,
+    subtitleScale,
+    subtitlePosition,
+    subtitleBackground,
+    subtitleOutline,
+  } = useVideoSettingsStore();
 
   const originalLanguage = useMemo(() => {
     if (!originalLanguageCode) return undefined;
@@ -245,7 +281,7 @@ export default function GeneratePage() {
   }
 
   return (
-    <div className="container mx-auto p-4 lg:p-6 pb-6 sm:pb-4 lg:pb-6">
+    <div className="container mx-auto p-4 lg:p-6 pb-6 sm:pb-4 lg:pb-6 relative">
       {/* Provide translation language names to children via window for reuse */}
       {(() => {
         if (typeof window !== 'undefined') {
@@ -378,13 +414,13 @@ export default function GeneratePage() {
           }}
         />
       </div>
+      <div className="sticky h-6 top-0 z-10 bg-background" />
 
       {/* Desktop grid: left editor, right translations + settings */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-        {/* Left: video + lines (stacked) */}
-        <div className="lg:col-span-8 order-2 lg:order-1">
+        {/* Left: transcription lines only */}
+        <div className="lg:col-span-7 order-2 lg:order-1">
           <TranscriptionEditor
-            videoSrc={project?.srcUrl!}
             transcription={data!}
             initialFontFamily={defaultFont}
             projectId={project?._id}
@@ -394,12 +430,44 @@ export default function GeneratePage() {
             onDirtyChange={setHasUnsavedChanges}
             initialExportJobId={project?.exportJobId || null}
             initialExportedUrl={project?.exportedVideoUrl || null}
+            layout="lines-only"
+            showDesktopSettings={false}
+            currentTime={transcriptionEditor.currentTime}
+            setCurrentTime={transcriptionEditor.setCurrentTime}
+            activeLine={transcriptionEditor.activeLine}
+            activeLineText={transcriptionEditor.activeLineText}
+            activeSubtitles={transcriptionEditor.activeSubtitles}
+            lines={transcriptionEditor.lines}
+            setLines={transcriptionEditor.setLines}
           />
         </div>
 
-        {/* Right: translations and settings */}
-        <div className="relative lg:col-span-4 space-y-4 order-1 lg:order-2 ">
-          <div className="lg:sticky lg:top-4 space-y-4">
+        {/* Right: video player, translations and settings */}
+        <div className="relative lg:col-span-5 space-y-4 order-1 lg:order-2 ">
+          <div className="lg:sticky lg:top-4 space-y-4 z-10">
+            {/* Video Player */}
+            <Card>
+              <CardContent className="p-0">
+                <VideoPlayer
+                  src={project?.srcUrl!}
+                  currentTime={videoPlayer.currentTime}
+                  onTimeUpdate={(time) => {
+                    videoPlayer.setCurrentTime(time);
+                    transcriptionEditor.setCurrentTime(time);
+                  }}
+                  className="w-full"
+                  activeLineText={transcriptionEditor.activeLineText}
+                  activeSubtitles={transcriptionEditor.activeSubtitles}
+                  subtitleColor={color1}
+                  subtitleSecondaryColor={color2}
+                  subtitleFontFamily={fontFamily}
+                  subtitleScale={subtitleScale}
+                  subtitlePosition={subtitlePosition}
+                  subtitleBackground={subtitleBackground}
+                  subtitleOutline={subtitleOutline}
+                />
+              </CardContent>
+            </Card>
             <div className="flex flex-wrap items-center gap-4 mb-4 p-4 rounded-lg border bg-card text-card-foreground shadow-sm">
               <div className="flex flex-wrap items-center gap-4 text-sm">
                 <div className="flex items-center gap-2">
