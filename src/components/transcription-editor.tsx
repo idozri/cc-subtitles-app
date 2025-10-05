@@ -1329,7 +1329,7 @@ const TranscriptionEditor: React.FC<TranscriptionEditorProps> = React.memo(
         )} */}
         <Card className="relative">
           <CardHeader className="text-lg sm:text-xl sticky top-4 bg-card z-10 rounded-t-lg outline outline-border outline-1">
-            <div className="absolute h-4 top-[80px] left-0 right-0 bottom-0 z-10 bg-card" />
+            <div className="absolute h-[1px] -bottom-[1px] left-0 right-0 z-10 bg-card" />
             <div className="flex flex-wrap items-center justify-between gap-3">
               <CardTitle>Transcription Lines</CardTitle>
               <div className="flex items-center gap-2 flex-wrap">

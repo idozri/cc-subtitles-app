@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
-  console.log('Login API called');
   const body = await request.json();
 
   const response = await fetch(
@@ -16,10 +15,6 @@ export async function POST(request: NextRequest) {
   );
 
   const responseData = await response.json();
-  
-  // Add debug logging
-  console.log('Login response status:', response.status);
-  console.log('Set-Cookie headers:', response.headers.getSetCookie());
 
   if (responseData.error) {
     return NextResponse.json(

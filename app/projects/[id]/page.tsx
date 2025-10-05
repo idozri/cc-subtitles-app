@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import TranscriptionEditor from '@/components/transcription-editor';
 import VideoPlayer from '@/components/video-player';
@@ -135,18 +135,28 @@ export default function GeneratePage() {
     },
   });
 
+  // Memoize transcription data to prevent unnecessary re-renders
+  const transcriptionData = useMemo(() => {
+    return data || { segments: [] };
+  }, [data]);
+
+  // Memoize the dirty change callback to prevent re-renders
+  const handleDirtyChange = useCallback((dirty: boolean) => {
+    setHasUnsavedChanges(dirty);
+  }, []);
+
   // Transcription editor hook
   const transcriptionEditor = useTranscriptionEditor({
-    transcription: data || { segments: [] },
+    transcription: transcriptionData,
     projectId: project?._id,
     sourceLanguageCode: originalLanguageCode,
-    onDirtyChange: setHasUnsavedChanges,
+    onDirtyChange: handleDirtyChange,
   });
 
   // Connect video player time to transcription editor
   useEffect(() => {
     transcriptionEditor.setCurrentTime(videoPlayer.currentTime);
-  }, [videoPlayer.currentTime, transcriptionEditor.setCurrentTime]);
+  }, [videoPlayer.currentTime]);
 
   // Mutation for updating project
   const updateProjectMutation = useMutation({
@@ -444,7 +454,7 @@ export default function GeneratePage() {
 
         {/* Right: video player, translations and settings */}
         <div className="relative lg:col-span-5 space-y-4 order-1 lg:order-2 ">
-          <div className="lg:sticky lg:top-4 space-y-4 z-10">
+          <div className="sticky top-4 space-y-4 z-10">
             {/* Video Player */}
             <Card>
               <CardContent className="p-0">
