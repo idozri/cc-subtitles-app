@@ -145,9 +145,6 @@ const ModalLanguagePicker: React.FC<ModalLanguagePickerProps> = ({
                       <div className="font-medium text-foreground">
                         {language.name}
                       </div>
-                      <div className="text-xs text-muted-foreground">
-                        {language.code}
-                      </div>
                     </div>
                     <div className="ml-auto text-xs text-muted-foreground">
                       {isDisabled ? 'Already added' : ''}

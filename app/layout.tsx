@@ -4,6 +4,7 @@ import './globals.css';
 import { Providers } from './providers';
 import { Navigation } from '@/components/navigation';
 import { Toaster } from '@/components/ui';
+import { BlockedUserProvider } from '@/components/blocked-user-provider';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -32,9 +33,11 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <Providers>
-          <Navigation />
-          {children}
-          <Toaster />
+          <BlockedUserProvider>
+            <Navigation />
+            {children}
+            <Toaster />
+          </BlockedUserProvider>
         </Providers>
       </body>
     </html>

@@ -39,6 +39,8 @@ import {
   X,
   HardDrive,
   Trash2,
+  Clock,
+  CircleX,
 } from 'lucide-react';
 import Image from 'next/image';
 import { getProjectsSocket } from '@/lib/socket';
@@ -53,6 +55,7 @@ interface ProjectCardProps {
 
 const getStatusVariant = (status: string) => {
   switch (status) {
+    case 'pending':
     case 'uploading':
     case 'processing':
     case 'transcribing':
@@ -61,6 +64,7 @@ const getStatusVariant = (status: string) => {
       return 'default';
     case 'failed':
     case 'failed_transcription':
+    case 'canceled':
       return 'destructive';
     default:
       return 'secondary';
@@ -75,11 +79,15 @@ const getStatusIcon = (status: string) => {
       return <Settings className="w-4 h-4" />;
     case 'transcribing':
       return <Languages className="w-4 h-4" />;
+    case 'pending':
+      return <Clock className="w-4 h-4" />;
     case 'ready':
       return <CheckCircle className="w-4 h-4" />;
     case 'failed':
     case 'failed_transcription':
       return <AlertCircle className="w-4 h-4" />;
+    case 'canceled':
+      return <CircleX className="w-4 h-4" />;
     default:
       return <FileVideo className="w-4 h-4" />;
   }
@@ -87,6 +95,8 @@ const getStatusIcon = (status: string) => {
 
 const getStatusText = (status: string) => {
   switch (status) {
+    case 'pending':
+      return 'Pending...';
     case 'uploading':
       return 'Uploading...';
     case 'processing':
@@ -99,6 +109,8 @@ const getStatusText = (status: string) => {
       return 'Failed';
     case 'failed_transcription':
       return 'Transcription Failed';
+    case 'canceled':
+      return 'Cancelled';
     default:
       return 'Unknown';
   }
@@ -132,7 +144,7 @@ export function ProjectCard({
   const [isResuming, setIsResuming] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [liveStatus, setLiveStatus] = useState<string | null>('transcribing');
+  const [liveStatus, setLiveStatus] = useState<string | null>('pending');
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   // Worker functionality removed - resume uploads not supported
   const updateProject = useProjectStore((s) => s.updateProject);
@@ -271,7 +283,10 @@ export function ProjectCard({
   };
 
   const isFailed =
-    effectiveStatus === 'failed' || effectiveStatus === 'failed_transcription';
+    effectiveStatus === 'failed' ||
+    effectiveStatus === 'failed_transcription' ||
+    effectiveStatus === 'canceled';
+  console.log(project.status, 'actual status');
   return (
     <Card className="hover:shadow-lg transition-shadow duration-200">
       <CardHeader className="pb-3">
@@ -461,7 +476,7 @@ export function ProjectCard({
                 {isResuming ? 'Resuming…' : 'Resume Upload'}
               </Button>
             )}
-          {effectiveStatus === 'failed_transcription' && (
+          {/* {effectiveStatus === 'failed_transcription' && (
             <Button
               onClick={handleRetryTranscription}
               className="flex-1"
@@ -469,7 +484,7 @@ export function ProjectCard({
             >
               {isRetrying ? 'Retrying…' : 'Retry Transcription'}
             </Button>
-          )}
+          )} */}
 
           {/* Cancel Button for non-ready projects */}
           {effectiveStatus !== 'ready' && onCancelProject && (

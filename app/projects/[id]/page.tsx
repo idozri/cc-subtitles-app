@@ -12,10 +12,15 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { client } from '@/api/common';
 import { ApiResponse } from '@/api/types';
 import { useFontsStore } from '@/lib/store/fonts';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { findLanguage, findLanguageByAnyCode } from '@/lib/languages';
 import { Switch } from '@/components/ui';
-import { SettingsContent } from '@/components/settings-content';
 import { useVideoSettingsStore } from '@/lib/store/video-settings';
 import { useVideoPlayer } from '@/hooks/use-video-player';
 import { useTranscriptionEditor } from '@/hooks/use-transcription-editor';
@@ -57,6 +62,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useToast } from '@/hooks/use-toast';
 
 type TranscriptionData = {
   segments: Array<{
@@ -85,6 +91,8 @@ export default function GeneratePage() {
   );
   const [error, setError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [translationError, setTranslationError] = useState<string | null>(null);
+  const { toast } = useToast();
   // const [project, setProject] = useState<Project | null>(null);
   // const [isLoadingJson, setIsLoadingJson] = useState(true);
 
@@ -520,7 +528,7 @@ export default function GeneratePage() {
                 <CardHeader>
                   <CardTitle>Translations</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-4 max-h-72 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                   <div className="flex items-center gap-3">
                     {originalLanguage?.image ? (
                       <img
@@ -640,8 +648,9 @@ export default function GeneratePage() {
                       )}
                     </div>
                   )}
-
-                  <div className="flex items-center gap-3">
+                </CardContent>
+                <CardFooter>
+                  <div className="flex items-center gap-3 mt-4">
                     <Button
                       size="sm"
                       variant="outline"
@@ -657,7 +666,7 @@ export default function GeneratePage() {
                       Add translation
                     </Button>
                   </div>
-                </CardContent>
+                </CardFooter>
               </Card>
 
               {/* External settings card for desktop */}
@@ -680,22 +689,20 @@ export default function GeneratePage() {
         onSelect={async (language) => {
           try {
             setPickerOpen(false);
+            setTranslationError(null); // Clear any previous errors
+
             // 3) enqueue translation
             const tgt = language.translateCode || language.code!;
             // Make sure names map includes the chosen language immediately (for pending labels)
             setExtraLangNames((prev) => ({ ...prev, [tgt]: language.name }));
-            const res = await fetch(`${Env.API_URL}/translate`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              credentials: 'include',
-              body: JSON.stringify({
-                projectId: project?._id,
-                src: originalLanguageCode,
-                tgt,
-                // forceFresh: true,
-              }),
+
+            const res = await client.post('/translate', {
+              projectId: project?._id,
+              src: originalLanguageCode,
+              tgt,
+              // forceFresh: true,
             });
-            const { jobId } = await res.json();
+            const { jobId } = res.data;
             setActiveJobId(jobId);
             // Mark all lines as pending for selected target
             setData((prev) => {
@@ -748,56 +755,38 @@ export default function GeneratePage() {
               es.close();
               setActiveJobId(null);
             });
-          } catch (e) {
-            console.error(e);
+          } catch (error: any) {
+            console.error('Translation failed:', error);
+
+            // Extract error message from the response
+            let errorMessage = 'Failed to start translation. Please try again.';
+
+            if (error?.response?.data?.message) {
+              errorMessage = error.response.data.message;
+            } else if (error?.message) {
+              errorMessage = error.message;
+            }
+
+            // Set error state for UI display
+            setTranslationError(errorMessage);
+
+            // Show toast notification
+            toast({
+              variant: 'destructive',
+              title: 'Translation Failed',
+              description: errorMessage,
+            });
+
+            // Remove the language from extra names if it was added
+            const tgt = language.translateCode || language.code!;
+            setExtraLangNames((prev) => {
+              const updated = { ...prev };
+              delete updated[tgt];
+              return updated;
+            });
           }
         }}
       />
     </div>
-  );
-}
-
-// Local component to render settings bound to the shared store
-function RightSettings() {
-  const {
-    color1,
-    color2,
-    fontFamily,
-    subtitleScale,
-    subtitlePosition,
-    subtitleBackground,
-    subtitleOutline,
-    setColor1,
-    setColor2,
-    setFontFamily,
-    setSubtitleScale,
-    setSubtitlePosition,
-    setSubtitleBackground,
-    setSubtitleOutline,
-  } = useVideoSettingsStore();
-  return (
-    <Card className="hidden lg:block">
-      <CardHeader>
-        <CardTitle>Subtitle Settings</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <SettingsContent
-          color1={color1}
-          setColor1={setColor1}
-          color2={color2}
-          setColor2={setColor2}
-          fontFamily={fontFamily}
-          setFontFamily={setFontFamily}
-          subtitleScale={subtitleScale}
-          setSubtitleScale={setSubtitleScale}
-          subtitlePosition={subtitlePosition}
-          setSubtitlePosition={setSubtitlePosition}
-          subtitleBackground={subtitleBackground}
-          setSubtitleBackground={setSubtitleBackground}
-          subtitleOutline={subtitleOutline}
-          setSubtitleOutline={setSubtitleOutline}
-        />
-      </CardContent>
-    </Card>
   );
 }

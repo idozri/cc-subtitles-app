@@ -11,11 +11,22 @@ import {
   Minimize2,
   Loader2,
   AlertTriangle,
+  Settings,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
 import { getPreloadedFontClassName } from '@/lib/fonts';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogPortal,
+  DialogOverlay,
+} from '@/components/ui/dialog';
+import { SettingsContent } from '@/components/settings-content';
+import { useVideoSettingsStore } from '@/lib/store/video-settings';
 
 interface VideoPlayerProps {
   src: string;
@@ -69,6 +80,25 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     width: number;
     height: number;
   } | null>(null);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  // Subtitle settings store (shared across app)
+  const {
+    color1,
+    color2,
+    fontFamily,
+    subtitleScale: storeSubtitleScale,
+    subtitlePosition: storeSubtitlePosition,
+    subtitleBackground: storeSubtitleBackground,
+    subtitleOutline: storeSubtitleOutline,
+    setColor1,
+    setColor2,
+    setFontFamily,
+    setSubtitleScale,
+    setSubtitlePosition,
+    setSubtitleBackground,
+    setSubtitleOutline,
+  } = useVideoSettingsStore();
 
   // Keyboard controls for desktop
   useEffect(() => {
@@ -607,6 +637,48 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           showControls ? 'opacity-100' : 'opacity-0'
         )}
       >
+        {/* Top-right Settings Button */}
+        <div className="absolute top-2 right-2 z-[9999]">
+          <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
+            <Button
+              variant="outline"
+              size="icon"
+              type="button"
+              className="h-8 w-8 p-0 bg-background/80 backdrop-blur-sm hover:bg-background/90"
+              onClick={() => setIsSettingsOpen(true)}
+            >
+              <Settings className="h-4 w-4" />
+              <span className="sr-only">Open subtitle settings</span>
+            </Button>
+            <DialogContent
+              container={containerRef.current || undefined}
+              className="sm:max-w-md w-11/12 rounded-lg"
+            >
+              <DialogHeader>
+                <DialogTitle>Subtitle Settings</DialogTitle>
+              </DialogHeader>
+              <SettingsContent
+                color1={color1}
+                setColor1={setColor1}
+                color2={color2}
+                setColor2={setColor2}
+                fontFamily={fontFamily}
+                setFontFamily={setFontFamily}
+                subtitleScale={subtitleScale ?? storeSubtitleScale}
+                setSubtitleScale={setSubtitleScale}
+                subtitlePosition={subtitlePosition ?? storeSubtitlePosition}
+                setSubtitlePosition={setSubtitlePosition}
+                subtitleBackground={
+                  subtitleBackground ?? storeSubtitleBackground
+                }
+                setSubtitleBackground={setSubtitleBackground}
+                subtitleOutline={subtitleOutline || storeSubtitleOutline}
+                setSubtitleOutline={setSubtitleOutline}
+              />
+            </DialogContent>
+          </Dialog>
+        </div>
+
         {/* Center Play Button */}
         <div className="absolute inset-0 flex items-center justify-center">
           <Button
