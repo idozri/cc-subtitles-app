@@ -22,6 +22,19 @@ if (typeof window !== 'undefined') {
     (response) => response,
     async (error) => {
       const originalRequest = error.config;
+
+      // Check for USER_BLOCKED error
+      if (
+        error.response?.data?.message === 'USER_BLOCKED' ||
+        error.response?.statusText === 'USER_BLOCKED'
+      ) {
+        // Trigger blocked user modal
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('user-blocked'));
+        }
+        return Promise.reject(error);
+      }
+
       // Prevent infinite loop and avoid refreshing on auth endpoints
       if (
         error.response?.status === 401 &&

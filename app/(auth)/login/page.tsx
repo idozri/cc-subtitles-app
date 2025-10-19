@@ -118,6 +118,14 @@ function LoginForm() {
         return;
       }
 
+      if (error.message === AUTH_ERROR_CODES.USER_BLOCKED) {
+        setError(
+          'Your account needs to be reactivated. Please contact support.'
+        );
+        setIsLoading(false);
+        return;
+      }
+
       setError('Invalid email or password');
       setIsLoading(false);
     }

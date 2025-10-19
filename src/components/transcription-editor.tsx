@@ -897,10 +897,32 @@ const TranscriptionEditor: React.FC<TranscriptionEditorProps> = React.memo(
         e.preventDefault();
         e.returnValue = '';
       };
+
+      const handlePopState = (e: PopStateEvent) => {
+        if (!isDirty) return;
+
+        // Show confirmation dialog
+        const shouldLeave = window.confirm(
+          'You have unsaved changes. Are you sure you want to leave this page?'
+        );
+
+        if (!shouldLeave) {
+          // Push the current state back to prevent navigation
+          window.history.pushState(null, '', window.location.href);
+        }
+      };
+
       if (isDirty) {
         window.addEventListener('beforeunload', beforeUnload);
+        // Add a dummy state to the history stack when dirty
+        window.history.pushState(null, '', window.location.href);
+        window.addEventListener('popstate', handlePopState);
       }
-      return () => window.removeEventListener('beforeunload', beforeUnload);
+
+      return () => {
+        window.removeEventListener('beforeunload', beforeUnload);
+        window.removeEventListener('popstate', handlePopState);
+      };
     }, [isDirty]);
 
     // Save to S3 via API (preserve full JSON; update segments and top-level translations)

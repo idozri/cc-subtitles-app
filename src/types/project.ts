@@ -48,6 +48,7 @@ export interface CreateProjectData {
   translateToEnglish?: boolean;
   deviceId?: string;
   thumbnailDataUrl?: string;
+  durationSeconds?: number;
 }
 
 export interface ProjectWithUpload extends Project {

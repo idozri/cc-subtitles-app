@@ -40,6 +40,7 @@ import { S3UploadService } from '@/lib/s3-upload';
 import type { UploadProgress } from '@/types/upload';
 import { extractAudioFromVideo } from '@/lib/ffmpeg-audio';
 import { generateVideoThumbnail } from '@/lib/video-thumbnail';
+import { client } from '../../api/common/client';
 
 const createProjectSchema = z.object({
   title: z.string().min(1, 'Project title is required'),
@@ -164,6 +165,45 @@ export default function NewProjectNoWorkersPage() {
     return new S3UploadService({ chunkSize, maxConcurrentChunks });
   };
 
+  const getMediaDurationSeconds = async (
+    file: File
+  ): Promise<number | undefined> => {
+    try {
+      const url = URL.createObjectURL(file);
+      const isVideo = file.type.startsWith('video/');
+      const el = isVideo
+        ? document.createElement('video')
+        : document.createElement('audio');
+      el.preload = 'metadata';
+      el.src = url;
+      return await new Promise<number | undefined>((resolve) => {
+        const onLoaded = () => {
+          const seconds = Number.isFinite(el.duration)
+            ? Math.round(el.duration)
+            : undefined;
+          try {
+            URL.revokeObjectURL(url);
+          } catch {}
+          el.removeEventListener('loadedmetadata', onLoaded);
+          el.remove();
+          resolve(seconds);
+        };
+        el.addEventListener('loadedmetadata', onLoaded);
+        // Fallback timeout in case metadata never loads
+        setTimeout(() => {
+          try {
+            URL.revokeObjectURL(url);
+          } catch {}
+          el.removeEventListener('loadedmetadata', onLoaded);
+          el.remove();
+          resolve(undefined);
+        }, 3000);
+      });
+    } catch {
+      return undefined;
+    }
+  };
+
   const handleSubmit = async (data: CreateProjectFormData) => {
     if (!selectedFile) {
       toast({
@@ -213,29 +253,11 @@ export default function NewProjectNoWorkersPage() {
         mimeType: selectedFile.type,
         deviceId,
         ...(thumbnailDataUrl ? { thumbnailDataUrl } : {}),
+        durationSeconds: await getMediaDurationSeconds(selectedFile),
       };
 
-      const response = await fetch('/api/projects', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(projectData),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(async () => ({
-          message: await response
-            .text()
-            .catch(() => 'Failed to create project'),
-        }));
-        throw new Error(
-          `${errorData.message || 'Failed to create project'} (status ${
-            response.status
-          })`
-        );
-      }
-
-      const result = await response.json();
+      const response = await client.post('/projects', projectData);
+      const result = response.data;
       if (!result.success) {
         throw new Error(result.message || 'Failed to create project');
       }
@@ -329,6 +351,7 @@ export default function NewProjectNoWorkersPage() {
                 etag: p.etag,
                 size: p.size,
               })),
+              lengthSeconds: await getMediaDurationSeconds(audioFile),
             }),
           });
         } catch (audioErr: any) {
@@ -357,6 +380,7 @@ export default function NewProjectNoWorkersPage() {
                 etag: p.etag,
                 size: p.size,
               })),
+              lengthSeconds: await getMediaDurationSeconds(selectedFile),
             }),
           });
         } catch (audioErr) {
@@ -372,7 +396,7 @@ export default function NewProjectNoWorkersPage() {
 
       router.push('/projects');
     } catch (error) {
-      console.error('Error creating project (no-workers):', error);
+      console.error('Error creating project:', error);
       toast({
         title: 'Upload Failed',
         description:
@@ -397,7 +421,7 @@ export default function NewProjectNoWorkersPage() {
           <ArrowLeft className="w-4 h-4" />
           Back
         </Button>
-        <h1 className="text-3xl font-bold">Create New Project (No Workers)</h1>
+        <h1 className="text-3xl font-bold">Create New Project</h1>
         <p className="text-muted-foreground mt-2">
           Upload a file and generate subtitles without using workers
         </p>
@@ -595,22 +619,9 @@ export default function NewProjectNoWorkersPage() {
                         className="w-4 h-4 object-cover rounded-sm mr-1"
                       />
                     ) : null}
-                    {selectedLanguage?.flag && (
-                      <span
-                        className="text-lg"
-                        style={{
-                          display: selectedLanguage?.image ? 'none' : 'inline',
-                        }}
-                      >
-                        {selectedLanguage.flag}
-                      </span>
-                    )}
                     <div>
                       <div className="font-medium text-foreground">
                         {selectedLanguage?.name || 'Select Language'}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {selectedLanguage?.code}
                       </div>
                     </div>
                   </div>
