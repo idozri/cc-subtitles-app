@@ -36,6 +36,8 @@ export interface Project {
   srcUrl?: string;
   exportedVideoUrl?: string;
   exportJobId?: string;
+  isAudioFile: boolean;
+  scaleFormat?: string;
 }
 
 export interface CreateProjectData {
@@ -49,6 +51,8 @@ export interface CreateProjectData {
   deviceId?: string;
   thumbnailDataUrl?: string;
   durationSeconds?: number;
+  isAudioFile?: boolean;
+  scaleFormat?: string;
 }
 
 export interface ProjectWithUpload extends Project {
