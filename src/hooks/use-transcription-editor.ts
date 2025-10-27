@@ -23,7 +23,7 @@ interface TranscriptionJson {
   segments: TranscriptionJsonSegment[];
 }
 
-interface TranscriptionLineData {
+export interface TranscriptionLineData {
   id: number;
   start: number;
   end: number;
@@ -90,6 +90,9 @@ interface UseTranscriptionEditorReturn {
   mergeLines: (fromId: number, toId: number) => void;
   cropAtWord: (id: number, wordIndex: number) => void;
   beginCrop: (id: number) => void;
+  commitLinesUpdate: (
+    updater: (prev: TranscriptionLineData[]) => TranscriptionLineData[]
+  ) => void;
 
   // Line insertion
   insertLineAtStart: () => void;
@@ -823,6 +826,7 @@ export const useTranscriptionEditor = ({
     mergeLines,
     cropAtWord,
     beginCrop,
+    commitLinesUpdate,
 
     // Line insertion
     insertLineAtStart,

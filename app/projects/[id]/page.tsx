@@ -1,6 +1,12 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  useRef,
+} from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import TranscriptionEditor from '@/components/transcription-editor';
 import VideoPlayer from '@/components/video-player';
@@ -8,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import ModalLanguagePicker from '@/components/modal-language-picker';
 import { Env } from '@/lib/env';
 import { Project } from '@/types/project';
+import { TranscriptionLineData } from '@/hooks/use-transcription-editor';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { client } from '@/api/common';
 import { ApiResponse } from '@/api/types';
@@ -36,6 +43,7 @@ import {
   FileCode,
   File,
   Trash2,
+  Target,
 } from 'lucide-react';
 import { EditableTitle } from '@/components/editable-title';
 import EditableDescription from '@/components/editable-description';
@@ -63,6 +71,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
+import InlineTranscriptionEditor from '@/components/inline-transcription-editor';
 
 type TranscriptionData = {
   segments: Array<{
@@ -92,9 +101,10 @@ export default function GeneratePage() {
   const [error, setError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [translationError, setTranslationError] = useState<string | null>(null);
+  const [isEditingMode, setIsEditingMode] = useState(false);
+  const [editingTime, setEditingTime] = useState(0);
+  const videoPlayerRef = useRef<any>(null);
   const { toast } = useToast();
-  // const [project, setProject] = useState<Project | null>(null);
-  // const [isLoadingJson, setIsLoadingJson] = useState(true);
 
   // get the project with react query
   const { data: project, isLoading } = useQuery({
@@ -259,6 +269,59 @@ export default function GeneratePage() {
     } finally {
       setIsDeleting(false);
     }
+  };
+
+  // Handle video click for editing
+  const handleVideoClick = (currentTime: number) => {
+    setEditingTime(currentTime);
+    setIsEditingMode(true);
+    // Pause the video using the ref
+    videoPlayerRef.current?.pause();
+  };
+
+  // Handle editing a line
+  const handleEditLine = (id: number, newText: string) => {
+    transcriptionEditor.applyLineText(id, newText);
+    setIsEditingMode(false);
+    // Resume the video using the ref
+    videoPlayerRef.current?.play();
+  };
+
+  // Handle adding a new line
+  const handleAddLine = (start: number, end: number, text: string) => {
+    // Use the transcription editor's commitLinesUpdate to ensure undo/redo and dirty state work
+    transcriptionEditor.commitLinesUpdate(
+      (prevLines: TranscriptionLineData[]) => {
+        const newLine = {
+          id:
+            Math.max(...prevLines.map((l: TranscriptionLineData) => l.id), 0) +
+            1,
+          start,
+          end,
+          text,
+          words: text
+            .split(/\s+/)
+            .filter(Boolean)
+            .map((word, i) => ({
+              word,
+              start: start + ((end - start) * i) / text.split(/\s+/).length,
+              end: start + ((end - start) * (i + 1)) / text.split(/\s+/).length,
+            })),
+        };
+
+        return [...prevLines, newLine].sort((a, b) => a.start - b.start);
+      }
+    );
+    setIsEditingMode(false);
+    // Resume the video using the ref
+    videoPlayerRef.current?.play();
+  };
+
+  // Handle exiting editing mode
+  const handleExitEditingMode = () => {
+    setIsEditingMode(false);
+    // Resume the video using the ref
+    videoPlayerRef.current?.play();
   };
 
   // Initialize visibility: show source + any translations found
@@ -457,6 +520,13 @@ export default function GeneratePage() {
             activeSubtitles={transcriptionEditor.activeSubtitles}
             lines={transcriptionEditor.lines}
             setLines={transcriptionEditor.setLines}
+            // Pass hook state for undo/redo and save
+            isDirty={transcriptionEditor.isDirty}
+            canUndo={transcriptionEditor.canUndo}
+            canRedo={transcriptionEditor.canRedo}
+            undo={transcriptionEditor.undo}
+            redo={transcriptionEditor.redo}
+            handleSave={transcriptionEditor.handleSave}
           />
         </div>
 
@@ -467,6 +537,7 @@ export default function GeneratePage() {
             <Card>
               <CardContent className="p-0">
                 <VideoPlayer
+                  ref={videoPlayerRef}
                   src={project?.srcUrl!}
                   currentTime={videoPlayer.currentTime}
                   onTimeUpdate={(time) => {
@@ -483,6 +554,21 @@ export default function GeneratePage() {
                   subtitlePosition={subtitlePosition}
                   subtitleBackground={subtitleBackground}
                   subtitleOutline={subtitleOutline}
+                  onVideoClick={handleVideoClick}
+                  isEditingMode={isEditingMode}
+                  onExitEditingMode={handleExitEditingMode}
+                  editingComponent={
+                    isEditingMode ? (
+                      <InlineTranscriptionEditor
+                        currentTime={editingTime}
+                        lines={transcriptionEditor.lines}
+                        onEditLine={handleEditLine}
+                        onAddLine={handleAddLine}
+                        onExitEditing={handleExitEditingMode}
+                        sourceLanguageCode={originalLanguageCode}
+                      />
+                    ) : undefined
+                  }
                 />
               </CardContent>
             </Card>
