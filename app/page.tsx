@@ -61,7 +61,7 @@ export default function HomePage() {
         </div>
 
         {/* Features */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
+        {/* <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
           <Card>
             <CardHeader className="text-center">
               <div className="w-12 h-12 bg-primary/20 rounded-lg flex items-center justify-center mx-auto mb-4">
@@ -98,7 +98,7 @@ export default function HomePage() {
               </CardDescription>
             </CardHeader>
           </Card>
-        </div>
+        </div> */}
 
         {/* Latest Projects */}
         {isLoading ? (

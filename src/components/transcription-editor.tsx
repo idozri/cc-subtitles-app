@@ -31,6 +31,7 @@ import {
   File,
   Undo2,
   Redo2,
+  Target,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
@@ -85,6 +86,13 @@ interface TranscriptionEditorProps {
   activeSubtitles?: Array<{ code: string; text: string }>;
   lines?: TranscriptionLineData[];
   setLines?: React.Dispatch<React.SetStateAction<TranscriptionLineData[]>>;
+  // Hook state for undo/redo and save
+  isDirty?: boolean;
+  canUndo?: boolean;
+  canRedo?: boolean;
+  undo?: () => void;
+  redo?: () => void;
+  handleSave?: () => Promise<void>;
 }
 
 const clamp = (value: number, min: number, max: number): number =>
@@ -111,6 +119,13 @@ const TranscriptionEditor: React.FC<TranscriptionEditorProps> = React.memo(
     activeSubtitles: externalActiveSubtitles,
     lines: externalLines,
     setLines: externalSetLines,
+    // Hook state for undo/redo and save
+    isDirty: externalIsDirty,
+    canUndo: externalCanUndo,
+    canRedo: externalCanRedo,
+    undo: externalUndo,
+    redo: externalRedo,
+    handleSave: externalHandleSave,
   }) => {
     const router = useRouter();
     const { toast } = useToast();
@@ -160,7 +175,9 @@ const TranscriptionEditor: React.FC<TranscriptionEditorProps> = React.memo(
     const [pendingNewLine, setPendingNewLine] = useState<PendingNewLine | null>(
       null
     );
-    const [isDirty, setIsDirty] = useState(false);
+    // Use external isDirty from hook, fallback to local state
+    const [localIsDirty, setLocalIsDirty] = useState(false);
+    const isDirty = externalIsDirty ?? localIsDirty;
     const [isSaving, setIsSaving] = useState(false);
     const [isCroppingMode, setIsCroppingMode] = useState(false);
     const [exportingJobId, setExportingJobId] = useState<string | null>(null);
@@ -172,8 +189,11 @@ const TranscriptionEditor: React.FC<TranscriptionEditorProps> = React.memo(
     const [visibleLanguages, setVisibleLanguages] = useState<
       Record<string, boolean>
     >({});
+    const [autoScrollPaused, setAutoScrollPaused] = useState(false);
+    const programmaticScrollRef = useRef(false);
 
     // --- History (Undo/Redo) ---
+    // Restore local undo/redo state for fallback when external state is not available
     const UNDO_LIMIT = 6;
     const [undoStack, setUndoStack] = useState<TranscriptionLineData[][]>([]);
     const [redoStack, setRedoStack] = useState<TranscriptionLineData[][]>([]);
@@ -195,6 +215,7 @@ const TranscriptionEditor: React.FC<TranscriptionEditorProps> = React.memo(
         pending: l.pending ? { ...l.pending } : undefined,
       }));
 
+    // Restore local commitLinesUpdate but use external state when available
     const commitLinesUpdate = useCallback(
       (updater: (prev: TranscriptionLineData[]) => TranscriptionLineData[]) => {
         let didChange = false;
@@ -202,48 +223,68 @@ const TranscriptionEditor: React.FC<TranscriptionEditorProps> = React.memo(
           const nextLines = updater(prev);
           if (nextLines === prev) return prev;
           didChange = true;
-          setUndoStack((uPrev) => {
-            const next = [...uPrev, cloneLines(prev)];
-            return next.length > UNDO_LIMIT ? next.slice(1) : next;
-          });
-          setRedoStack([]);
-          return nextLines;
+          // Only update undo/redo if we have external functions
+          if (externalUndo && externalRedo) {
+            // External state management - let the hook handle it
+            return nextLines;
+          } else {
+            // Local state management (fallback)
+            setUndoStack((uPrev) => {
+              const next = [...uPrev, cloneLines(prev)];
+              return next.length > UNDO_LIMIT ? next.slice(1) : next;
+            });
+            setRedoStack([]);
+            return nextLines;
+          }
         });
-        if (didChange) setIsDirty(true);
+        if (didChange) {
+          if (externalIsDirty !== undefined) {
+            // External state management - let the hook handle it
+          } else {
+            // Local state management (fallback)
+            setLocalIsDirty(true);
+          }
+        }
       },
-      []
+      [externalUndo, externalRedo, externalIsDirty]
     );
 
-    const canUndo = undoStack.length > 0;
-    const canRedo = redoStack.length > 0;
+    // Use external undo/redo state from hook, fallback to local state
+    const canUndo = externalCanUndo ?? undoStack.length > 0;
+    const canRedo = externalCanRedo ?? redoStack.length > 0;
 
-    const undo = () => {
-      if (!canUndo) return;
-      setLines((current) => {
-        const prevSnapshot = undoStack[undoStack.length - 1];
-        setUndoStack((stack) => stack.slice(0, -1));
-        setRedoStack((stack) => {
-          const next = [...stack, cloneLines(current)];
-          return next.length > UNDO_LIMIT ? next.slice(1) : next;
+    // Use external undo/redo functions from hook, fallback to local implementation
+    const undo =
+      externalUndo ??
+      (() => {
+        if (undoStack.length === 0) return;
+        setLines((current) => {
+          const prevSnapshot = undoStack[undoStack.length - 1];
+          setUndoStack((stack) => stack.slice(0, -1));
+          setRedoStack((stack) => {
+            const next = [...stack, cloneLines(current)];
+            return next.length > UNDO_LIMIT ? next.slice(1) : next;
+          });
+          return cloneLines(prevSnapshot);
         });
-        return cloneLines(prevSnapshot);
+        setLocalIsDirty(true);
       });
-      setIsDirty(true);
-    };
 
-    const redo = () => {
-      if (!canRedo) return;
-      setLines((current) => {
-        const nextSnapshot = redoStack[redoStack.length - 1];
-        setRedoStack((stack) => stack.slice(0, -1));
-        setUndoStack((stack) => {
-          const next = [...stack, cloneLines(current)];
-          return next.length > UNDO_LIMIT ? next.slice(1) : next;
+    const redo =
+      externalRedo ??
+      (() => {
+        if (redoStack.length === 0) return;
+        setLines((current) => {
+          const nextSnapshot = redoStack[redoStack.length - 1];
+          setRedoStack((stack) => stack.slice(0, -1));
+          setUndoStack((stack) => {
+            const next = [...stack, cloneLines(current)];
+            return next.length > UNDO_LIMIT ? next.slice(1) : next;
+          });
+          return cloneLines(nextSnapshot);
         });
-        return cloneLines(nextSnapshot);
+        setLocalIsDirty(true);
       });
-      setIsDirty(true);
-    };
 
     const gatherVisibleLanguages = useCallback((): string[] => {
       return Object.entries(visibleLanguages)
@@ -295,7 +336,7 @@ const TranscriptionEditor: React.FC<TranscriptionEditorProps> = React.memo(
         // Ensure lines are sorted; also helps gap buttons logic
         .sort((a, b) => a.start - b.start);
       setLines(mapped);
-      setIsDirty(false);
+      setLocalIsDirty(false);
       setUndoStack([]);
       setRedoStack([]);
     }, [transcription, setLines]);
@@ -371,7 +412,6 @@ const TranscriptionEditor: React.FC<TranscriptionEditorProps> = React.memo(
     const activeId = useMemo(() => {
       // Use external activeLine if provided
       if (externalActiveLine) {
-        console.log('Using external activeLine:', externalActiveLine.id);
         return externalActiveLine.id;
       }
 
@@ -379,16 +419,6 @@ const TranscriptionEditor: React.FC<TranscriptionEditorProps> = React.memo(
       const candidates = lines.filter(
         (l) => currentTime >= l.start && currentTime <= l.end
       );
-
-      console.log('ActiveId calculation:', {
-        currentTime,
-        candidatesCount: candidates.length,
-        candidates: candidates.map((c) => ({
-          id: c.id,
-          start: c.start,
-          end: c.end,
-        })),
-      });
 
       // If multiple candidates, prefer the one that starts closest to currentTime
       if (candidates.length > 1) {
@@ -403,7 +433,6 @@ const TranscriptionEditor: React.FC<TranscriptionEditorProps> = React.memo(
       }
 
       const result = candidates[0]?.id ?? -1;
-      console.log('Single candidate or none, result:', result);
       return result;
     }, [currentTime, lines, externalActiveLine]);
 
@@ -430,6 +459,74 @@ const TranscriptionEditor: React.FC<TranscriptionEditorProps> = React.memo(
 
       return candidates[0];
     }, [currentTime, lines, externalActiveLine]);
+
+    const scrollToActiveLine = useCallback(() => {
+      if (activeId === -1 || !scrollAreaRef.current) return;
+
+      // Add a small delay to prevent excessive scrolling when time changes rapidly
+      const timeoutId = window.setTimeout(() => {
+        const activeElement = scrollAreaRef.current?.querySelector(
+          `[data-line-id="${activeId}"]`
+        ) as HTMLElement | null;
+        if (!activeElement) return;
+
+        // Mark following scroll events as programmatic so we don't pause
+        programmaticScrollRef.current = true;
+        const clearProgrammatic = () => {
+          window.setTimeout(() => {
+            programmaticScrollRef.current = false;
+          }, 500);
+        };
+
+        // Method 1: Direct scrollIntoView on the element
+        try {
+          activeElement.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center',
+            inline: 'nearest',
+          });
+          clearProgrammatic();
+        } catch {}
+
+        // Method 2: Scroll via ScrollArea viewport when needed
+        const viewport = scrollAreaRef.current?.querySelector(
+          '[data-radix-scroll-area-viewport]'
+        ) as HTMLElement | null;
+        if (viewport) {
+          try {
+            const elementRect = activeElement.getBoundingClientRect();
+            const viewportRect = viewport.getBoundingClientRect();
+            const isAbove = elementRect.top < viewportRect.top;
+            const isBelow = elementRect.bottom > viewportRect.bottom;
+            if (isAbove || isBelow) {
+              const elementTop = activeElement.offsetTop;
+              const elementHeight = activeElement.offsetHeight;
+              const viewportHeight = viewport.clientHeight;
+              const scrollTop =
+                elementTop - viewportHeight / 2 + elementHeight / 2;
+              viewport.scrollTo({ top: scrollTop, behavior: 'smooth' });
+              clearProgrammatic();
+            }
+          } catch {}
+        } else {
+          // Method 3: Fallback - scroll the container itself
+          try {
+            const elementTop = activeElement.offsetTop;
+            const elementHeight = activeElement.offsetHeight;
+            const containerHeight = scrollAreaRef.current?.clientHeight || 0;
+            const scrollTop =
+              elementTop - containerHeight / 2 + elementHeight / 2;
+            scrollAreaRef.current?.scrollTo({
+              top: scrollTop,
+              behavior: 'smooth',
+            });
+            clearProgrammatic();
+          } catch {}
+        }
+      }, 100);
+
+      return () => window.clearTimeout(timeoutId);
+    }, [activeId]);
 
     const activeLineText = useMemo(() => {
       // Use external activeLineText if provided
@@ -534,118 +631,63 @@ const TranscriptionEditor: React.FC<TranscriptionEditorProps> = React.memo(
       </div>
     );
 
-    // Auto-scroll to active line
+    // Auto-scroll to active line, unless paused by user
     useEffect(() => {
-      console.log('Auto-scroll effect triggered:', {
-        activeId,
-        currentTime,
-        hasScrollArea: !!scrollAreaRef.current,
-      });
+      if (autoScrollPaused) return;
+      const cleanup = scrollToActiveLine();
+      return () => {
+        if (typeof cleanup === 'function') cleanup();
+      };
+    }, [activeId, autoScrollPaused, scrollToActiveLine]);
 
-      if (activeId === -1 || !scrollAreaRef.current) return;
+    // Detect manual user scroll and editing focus to pause auto-scroll
+    useEffect(() => {
+      const root = scrollAreaRef.current;
+      const viewport = ((root?.querySelector(
+        '[data-radix-scroll-area-viewport]'
+      ) as HTMLElement | null) || root) as HTMLElement | null;
+      if (!root || !viewport) return;
 
-      // Add a small delay to prevent excessive scrolling when time changes rapidly
-      const timeoutId = setTimeout(() => {
-        // Debug: Check if we can find any elements with data-line-id
-        const allLineElements =
-          scrollAreaRef.current?.querySelectorAll('[data-line-id]');
-        console.log('All line elements found:', allLineElements?.length || 0);
-
-        const activeElement = scrollAreaRef.current?.querySelector(
-          `[data-line-id="${activeId}"]`
-        );
-
-        console.log('Looking for active element:', {
-          activeId,
-          foundElement: !!activeElement,
-          allElements: Array.from(allLineElements || []).map((el) =>
-            el.getAttribute('data-line-id')
-          ),
-        });
-
-        if (activeElement) {
-          // Try multiple approaches to ensure scrolling works
-          console.log('Attempting to scroll to active element');
-
-          // Method 1: Direct scrollIntoView on the element
-          try {
-            activeElement.scrollIntoView({
-              behavior: 'smooth',
-              block: 'center',
-              inline: 'nearest',
-            });
-            console.log('Method 1: Direct scrollIntoView completed');
-          } catch (e) {
-            console.log('Method 1 failed:', e);
-          }
-
-          // Method 2: Find the viewport within the ScrollArea and scroll manually
-          const viewport = scrollAreaRef.current?.querySelector(
-            '[data-radix-scroll-area-viewport]'
-          );
-
-          console.log('ScrollArea viewport found:', !!viewport);
-
-          if (viewport) {
-            try {
-              const elementRect = activeElement.getBoundingClientRect();
-              const viewportRect = viewport.getBoundingClientRect();
-
-              // Calculate if element is outside viewport
-              const isAbove = elementRect.top < viewportRect.top;
-              const isBelow = elementRect.bottom > viewportRect.bottom;
-
-              console.log('Viewport check:', {
-                isAbove,
-                isBelow,
-                elementRect,
-                viewportRect,
-              });
-
-              if (isAbove || isBelow) {
-                console.log('Method 2: Manual scroll to center element');
-                const elementTop = (activeElement as HTMLElement).offsetTop;
-                const elementHeight = (activeElement as HTMLElement)
-                  .offsetHeight;
-                const viewportHeight = viewport.clientHeight;
-                const scrollTop =
-                  elementTop - viewportHeight / 2 + elementHeight / 2;
-
-                viewport.scrollTo({
-                  top: scrollTop,
-                  behavior: 'smooth',
-                });
-                console.log('Method 2: Manual scroll completed');
-              }
-            } catch (e) {
-              console.log('Method 2 failed:', e);
-            }
-          } else {
-            // Method 3: Fallback - try to scroll the scrollAreaRef itself
-            console.log('Method 3: Fallback scroll on scrollAreaRef');
-            try {
-              const elementTop = (activeElement as HTMLElement).offsetTop;
-              const elementHeight = (activeElement as HTMLElement).offsetHeight;
-              const containerHeight = scrollAreaRef.current?.clientHeight || 0;
-              const scrollTop =
-                elementTop - containerHeight / 2 + elementHeight / 2;
-
-              scrollAreaRef.current?.scrollTo({
-                top: scrollTop,
-                behavior: 'smooth',
-              });
-              console.log('Method 3: Fallback scroll completed');
-            } catch (e) {
-              console.log('Method 3 failed:', e);
-            }
-          }
+      const onUserScroll = () => {
+        if (programmaticScrollRef.current) return;
+        setAutoScrollPaused(true);
+      };
+      const onFocusIn = (e: Event) => {
+        const target = e.target as HTMLElement | null;
+        if (!target) return;
+        const tag = (target.tagName || '').toLowerCase();
+        if (tag === 'input' || tag === 'textarea' || target.isContentEditable) {
+          setAutoScrollPaused(true);
         }
-      }, 100); // 100ms delay
+      };
 
-      return () => clearTimeout(timeoutId);
-    }, [activeId]);
+      // Only detect direct user gestures, not generic scrolls
+      viewport.addEventListener(
+        'wheel',
+        onUserScroll as any,
+        { passive: true } as any
+      );
+      viewport.addEventListener(
+        'touchstart',
+        onUserScroll as any,
+        { passive: true } as any
+      );
+      viewport.addEventListener(
+        'pointerdown',
+        onUserScroll as any,
+        { passive: true } as any
+      );
+      root.addEventListener('focusin', onFocusIn as any);
 
-    const markDirty = useCallback(() => setIsDirty(true), []);
+      return () => {
+        viewport.removeEventListener('wheel', onUserScroll as any);
+        viewport.removeEventListener('touchstart', onUserScroll as any);
+        viewport.removeEventListener('pointerdown', onUserScroll as any);
+        root.removeEventListener('focusin', onFocusIn as any);
+      };
+    }, []);
+
+    const markDirty = useCallback(() => setLocalIsDirty(true), []);
 
     const applyLineText = useCallback(
       (id: number, newText: string) => {
@@ -926,47 +968,50 @@ const TranscriptionEditor: React.FC<TranscriptionEditorProps> = React.memo(
     }, [isDirty]);
 
     // Save to S3 via API (preserve full JSON; update segments and top-level translations)
-    const handleSave = async () => {
-      if (!projectId) return;
-      setIsSaving(true);
-      try {
-        const out: any = JSON.parse(JSON.stringify(transcription || {}));
+    // Use external handleSave function from hook, fallback to local implementation
+    const handleSave =
+      externalHandleSave ??
+      (async () => {
+        if (!projectId) return;
+        setIsSaving(true);
+        try {
+          const out: any = JSON.parse(JSON.stringify(transcription || {}));
 
-        out.segments = lines.map((l) => ({
-          id: l.id,
-          start: l.start,
-          end: l.end,
-          words: l.words,
-          translations: l.translations,
-          text: l.text.trim(),
-        }));
+          out.segments = lines.map((l) => ({
+            id: l.id,
+            start: l.start,
+            end: l.end,
+            words: l.words,
+            translations: l.translations,
+            text: l.text.trim(),
+          }));
 
-        const payload = { json: out };
-        const resp = await fetch(`/api/projects/${projectId}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify(payload),
-        });
-        if (!resp.ok) {
-          const err = await resp.json().catch(() => ({}));
-          throw new Error(err.message || 'Failed to save');
+          const payload = { json: out };
+          const resp = await fetch(`/api/projects/${projectId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(payload),
+          });
+          if (!resp.ok) {
+            const err = await resp.json().catch(() => ({}));
+            throw new Error(err.message || 'Failed to save');
+          }
+          setLocalIsDirty(false);
+          toast({
+            title: 'Saved',
+            description: 'Transcription saved successfully.',
+          });
+        } catch (e) {
+          toast({
+            title: 'Save failed',
+            description: (e as Error).message,
+            variant: 'destructive',
+          });
+        } finally {
+          setIsSaving(false);
         }
-        setIsDirty(false);
-        toast({
-          title: 'Saved',
-          description: 'Transcription saved successfully.',
-        });
-      } catch (e) {
-        toast({
-          title: 'Save failed',
-          description: (e as Error).message,
-          variant: 'destructive',
-        });
-      } finally {
-        setIsSaving(false);
-      }
-    };
+      });
 
     const pickExportLanguageCode = useCallback((): string | null => {
       const visible = gatherVisibleLanguages();
@@ -1355,6 +1400,23 @@ const TranscriptionEditor: React.FC<TranscriptionEditorProps> = React.memo(
             <div className="flex flex-wrap items-center justify-between gap-3">
               <CardTitle>Transcription Lines</CardTitle>
               <div className="flex items-center gap-2 flex-wrap">
+                {autoScrollPaused && (
+                  <div className="">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-9 w-9 p-0"
+                      onClick={() => {
+                        setAutoScrollPaused(false);
+                        // Recenter immediately upon resuming
+                        scrollToActiveLine();
+                      }}
+                      title="Resume auto-scroll"
+                    >
+                      <Target className="h-4 w-4 text-red-500" />
+                    </Button>
+                  </div>
+                )}
                 <Button
                   size="sm"
                   variant="outline"

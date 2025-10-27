@@ -65,6 +65,7 @@ const getStatusVariant = (status: string) => {
     case 'failed':
     case 'failed_transcription':
     case 'canceled':
+    case 'failed_upload':
       return 'destructive';
     default:
       return 'secondary';
@@ -85,6 +86,7 @@ const getStatusIcon = (status: string) => {
       return <CheckCircle className="w-4 h-4" />;
     case 'failed':
     case 'failed_transcription':
+    case 'failed_upload':
       return <AlertCircle className="w-4 h-4" />;
     case 'canceled':
       return <CircleX className="w-4 h-4" />;
@@ -109,6 +111,8 @@ const getStatusText = (status: string) => {
       return 'Failed';
     case 'failed_transcription':
       return 'Transcription Failed';
+    case 'failed_upload':
+      return 'Upload Failed';
     case 'canceled':
       return 'Cancelled';
     default:
@@ -285,8 +289,9 @@ export function ProjectCard({
   const isFailed =
     effectiveStatus === 'failed' ||
     effectiveStatus === 'failed_transcription' ||
+    effectiveStatus === 'failed_upload' ||
     effectiveStatus === 'canceled';
-  console.log(project.status, 'actual status');
+
   return (
     <Card className="hover:shadow-lg transition-shadow duration-200">
       <CardHeader className="pb-3">
@@ -317,7 +322,7 @@ export function ProjectCard({
 
       <CardContent className="space-y-4">
         {/* Thumbnail / Icon */}
-        <div className="w-full aspect-video bg-accent/30 rounded-md overflow-hidden relative flex items-center justify-center">
+        <div className="w-full aspect-video bg-neutral-900 rounded-md overflow-hidden relative flex items-center justify-center">
           {project.thumbnailUrl ? (
             <Image
               src={project.thumbnailUrl}

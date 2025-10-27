@@ -5,6 +5,7 @@ import { Providers } from './providers';
 import { Navigation } from '@/components/navigation';
 import { Toaster } from '@/components/ui';
 import { BlockedUserProvider } from '@/components/blocked-user-provider';
+import { ThemeProvider } from '@/components/theme-provider';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -32,13 +33,20 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         suppressHydrationWarning
       >
-        <Providers>
-          <BlockedUserProvider>
-            <Navigation />
-            {children}
-            <Toaster />
-          </BlockedUserProvider>
-        </Providers>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <Providers>
+            <BlockedUserProvider>
+              <Navigation />
+              {children}
+              <Toaster />
+            </BlockedUserProvider>
+          </Providers>
+        </ThemeProvider>
       </body>
     </html>
   );

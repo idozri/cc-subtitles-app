@@ -34,6 +34,7 @@ import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { useState } from 'react';
 import Image from 'next/image';
+import { ModeToggle } from '@/components/mode-toggle';
 
 export function Navigation() {
   const router = useRouter();
@@ -148,6 +149,7 @@ export function Navigation() {
 
           {/* Right side - User menu and mobile menu */}
           <div className="flex items-center space-x-2">
+            <ModeToggle />
             {/* Mobile Menu */}
             {user && (
               <Sheet>
