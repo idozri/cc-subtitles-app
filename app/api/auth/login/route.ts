@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
 
   // Forward cookies from server response to client
   const setCookieHeaders = response.headers.getSetCookie();
-  console.log('Forwarding cookies:', setCookieHeaders);
+
   setCookieHeaders.forEach((cookie) => {
     nextResponse.headers.append('Set-Cookie', cookie);
   });
