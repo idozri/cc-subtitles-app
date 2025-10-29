@@ -94,11 +94,24 @@ function VerifyEmailContent() {
     setSuccess('');
 
     try {
-      const response = await client.post('/auth/verify-email', {
-        token: verificationToken,
+      const response = await fetch('/api/auth/verify-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          token: verificationToken,
+        }),
       });
 
-      if (response.data.success) {
+      const responseData = await response.json();
+
+      if (!response.ok) {
+        throw new Error(responseData.message || 'Email verification failed');
+      }
+
+      if (responseData.success) {
         setSuccess(
           'Email verified successfully! You can now sign in to your account.'
         );
@@ -109,10 +122,7 @@ function VerifyEmailContent() {
         }, 3000);
       }
     } catch (error: any) {
-      setError(
-        error.response?.data?.message ||
-          'Email verification failed. Please try again.'
-      );
+      setError(error.message || 'Email verification failed. Please try again.');
     } finally {
       setIsLoading(false);
     }
