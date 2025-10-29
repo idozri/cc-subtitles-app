@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
-  console.log('Register API called');
   const body = await request.json();
 
   const response = await fetch(
@@ -15,12 +14,29 @@ export async function POST(request: NextRequest) {
     }
   );
 
-  const responseData = await response.json();
-
-  if (responseData.error) {
+  let responseData;
+  try {
+    responseData = await response.json();
+  } catch (error) {
     return NextResponse.json(
-      { error: responseData.message },
-      { status: responseData.statusCode === 400 ? 400 : 500 }
+      { message: 'Server error - invalid response' },
+      { status: 500 }
+    );
+  }
+
+  // Check if the server returned an error
+  if (
+    responseData.error ||
+    responseData.statusCode ||
+    responseData.validationErrors ||
+    !response.ok
+  ) {
+    return NextResponse.json(
+      {
+        message:
+          responseData.message || responseData.error || 'Registration failed',
+      },
+      { status: responseData.statusCode || response.status || 500 }
     );
   }
 

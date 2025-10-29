@@ -80,6 +80,14 @@ function VerifyEmailContent() {
     };
   }, [resendTimer]);
 
+  // Cleanup effect to reset loading states if component unmounts
+  useEffect(() => {
+    return () => {
+      setIsResending(false);
+      setIsLoading(false);
+    };
+  }, []);
+
   const handleVerifyEmail = async (verificationToken: string) => {
     setIsLoading(true);
     setError('');
@@ -111,24 +119,33 @@ function VerifyEmailContent() {
   };
 
   const handleResendVerification = async () => {
-    if (!email || resendTimer > 0) return;
+    if (!email || resendTimer > 0 || isResending) return;
 
     setIsResending(true);
     setResendSuccess('');
     setError('');
 
     try {
-      const response = await client.post('/auth/resend-email-verification', {
-        email: email,
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Request timeout')), 30000); // 30 second timeout
       });
 
-      if (response.data.success) {
-        setResendSuccess('Verification email sent successfully!');
-        setResendTimer(60); // 60 second cooldown
-      }
-    } catch (error: any) {
+      await Promise.race([
+        client.post('/auth/resend-email-verification', {
+          email: email,
+          platform: 'web', // Specify web platform for client
+        }),
+        timeoutPromise,
+      ]);
+
+      setResendSuccess('Verification email sent successfully!');
+      setResendTimer(60); // 60 second cooldown
+    } catch (err: any) {
+      console.error('Resend verification error:', err);
       setError(
-        error.response?.data?.message ||
+        err.response?.data?.message ||
+          err.message ||
           'Failed to resend verification email. Please try again.'
       );
     } finally {
@@ -228,39 +245,21 @@ function VerifyEmailContent() {
                 </form>
               </Form>
 
-              {email && (
-                <div className="space-y-2">
-                  <div className="text-sm text-muted-foreground text-center">
-                    Didn't receive the email?
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full"
-                    onClick={handleResendVerification}
-                    disabled={isResending || resendTimer > 0}
+              <div className="space-y-2">
+                <div className="text-sm text-muted-foreground text-center ">
+                  Didn't receive the email?
+                  <Link
+                    href="/resend-verification-email"
+                    className="text-primary hover:underline ml-2"
                   >
-                    {isResending && (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    )}
-                    {resendTimer > 0 ? (
-                      <>
-                        <RefreshCw className="mr-2 h-4 w-4" />
-                        Resend in {formatTime(resendTimer)}
-                      </>
-                    ) : (
-                      <>
-                        <RefreshCw className="mr-2 h-4 w-4" />
-                        Resend Verification Email
-                      </>
-                    )}
-                  </Button>
+                    Resend Email
+                  </Link>
                 </div>
-              )}
+              </div>
             </div>
           )}
 
-          <div className="mt-6 text-center text-sm">
+          <div className="mt-6 text-center text-sm space-x-4">
             <Link href="/login" className="text-primary hover:underline">
               Back to Sign In
             </Link>

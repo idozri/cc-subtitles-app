@@ -87,8 +87,8 @@ function LoginForm() {
 
       const loginResponseData = await loginResponse.json();
 
-      if (!loginResponse.ok) {
-        throw new Error(loginResponseData.error);
+      if (!loginResponse.ok || !loginResponseData.success) {
+        throw new Error(loginResponseData.message);
       }
 
       // Set user in store

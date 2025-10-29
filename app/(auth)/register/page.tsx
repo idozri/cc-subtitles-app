@@ -61,8 +61,26 @@ function RegisterForm() {
     if (tokenParam) {
       setToken(tokenParam);
       form.setValue('token', tokenParam);
+
+      // Track invitation click
+      trackInvitationClick(tokenParam);
     }
   }, [searchParams, form]);
+
+  const trackInvitationClick = async (token: string) => {
+    try {
+      await fetch('/api/users/track-invitation-click', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ token }),
+      });
+    } catch (error) {
+      // Silently fail - tracking is not critical
+      console.warn('Failed to track invitation click:', error);
+    }
+  };
 
   const onSubmit = async (data: RegisterFormData) => {
     setIsLoading(true);
