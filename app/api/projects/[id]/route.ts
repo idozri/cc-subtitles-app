@@ -7,10 +7,8 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const cookieStore = await request.cookies;
+  const cookieStore = await cookies();
   const cookie = cookieStore.toString();
-  console.log('cookie', cookie);
-
   try {
     const { id } = await params;
 
@@ -32,7 +30,7 @@ export async function GET(
     }
 
     const data = await response.json();
-
+    console.log(data);
     return NextResponse.json(data);
   } catch (error) {
     console.error('Error loading project:', error);
@@ -50,9 +48,8 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const cookieStore = await request.cookies;
+  const cookieStore = await cookies();
   const cookie = cookieStore.toString();
-
   try {
     const { id } = await params;
 
@@ -90,9 +87,8 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const cookieStore = await request.cookies;
+  const cookieStore = await cookies();
   const cookie = cookieStore.toString();
-
   const { id } = await params;
 
   try {
@@ -132,7 +128,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const cookieStore = await request.cookies;
+  const cookieStore = await cookies();
   const cookie = cookieStore.toString();
   const { id } = await params;
 
