@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { getCookieHeader } from '../common/utils';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 export async function GET(request: NextRequest) {
   const cookieStore = await cookies();
-  const cookieHeader = getCookieHeader(cookieStore);
+  const cookie = cookieStore.toString();
   try {
     // Extract device ID from request headers
     const deviceId = request.headers.get('x-device-id');
@@ -16,7 +15,7 @@ export async function GET(request: NextRequest) {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
-        ...(cookieHeader && { Cookie: cookieHeader }),
+        Cookie: cookie,
         ...(deviceId && { 'X-Device-ID': deviceId }),
       },
       credentials: 'include',
@@ -39,7 +38,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const cookieStore = await cookies();
-  const cookieHeader = getCookieHeader(cookieStore);
+  const cookie = cookieStore.toString();
 
   try {
     const requestBody = await request.json();
@@ -49,7 +48,7 @@ export async function POST(request: NextRequest) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...(cookieHeader && { Cookie: cookieHeader }),
+        Cookie: cookie,
       },
       credentials: 'include',
       body: JSON.stringify(requestBody),
@@ -78,7 +77,7 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   const cookieStore = await cookies();
-  const cookieHeader = getCookieHeader(cookieStore);
+  const cookie = cookieStore.toString();
 
   try {
     // Forward the request to the backend
@@ -86,7 +85,7 @@ export async function PUT(request: NextRequest) {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
-        ...(cookieHeader && { Cookie: cookieHeader }),
+        Cookie: cookie,
       },
       credentials: 'include',
       body: JSON.stringify(await request.json()),
