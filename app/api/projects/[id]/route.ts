@@ -9,6 +9,8 @@ export async function GET(
 ) {
   const cookieStore = await request.cookies;
   const cookie = cookieStore.toString();
+  console.log('cookie', cookie);
+
   try {
     const { id } = await params;
 
