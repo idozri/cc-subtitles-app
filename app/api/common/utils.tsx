@@ -49,3 +49,11 @@ export const getNextPageParam: GetPreviousPageParamFunction<
   unknown,
   PaginateQuery<unknown>
 > = (page) => getUrlParameters(page.next)?.offset ?? null;
+
+// Helper function to construct Cookie header from Next.js cookie store
+export function getCookieHeader(cookieStore: any): string {
+  return cookieStore
+    .getAll()
+    .map((cookie: any) => `${cookie.name}=${cookie.value}`)
+    .join('; ');
+}

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { getCookieHeader } from '../../common/utils';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -8,7 +9,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const cookieStore = await cookies();
-  const cookie = cookieStore.toString();
+  const cookieHeader = getCookieHeader(cookieStore);
   try {
     const { id } = await params;
 
@@ -17,7 +18,7 @@ export async function GET(
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
-        Cookie: cookie,
+        ...(cookieHeader && { Cookie: cookieHeader }),
       },
       credentials: 'include',
     });
@@ -49,7 +50,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const cookieStore = await cookies();
-  const cookie = cookieStore.toString();
+  const cookieHeader = getCookieHeader(cookieStore);
   try {
     const { id } = await params;
 
@@ -58,7 +59,7 @@ export async function DELETE(
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
-        Cookie: cookie,
+        ...(cookieHeader && { Cookie: cookieHeader }),
       },
       credentials: 'include',
     });
@@ -88,7 +89,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const cookieStore = await cookies();
-  const cookie = cookieStore.toString();
+  const cookieHeader = getCookieHeader(cookieStore);
   const { id } = await params;
 
   try {
@@ -97,7 +98,7 @@ export async function PUT(
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
-        Cookie: cookie,
+        ...(cookieHeader && { Cookie: cookieHeader }),
       },
       credentials: 'include',
       body: JSON.stringify(body),
@@ -129,7 +130,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const cookieStore = await cookies();
-  const cookie = cookieStore.toString();
+  const cookieHeader = getCookieHeader(cookieStore);
   const { id } = await params;
 
   try {
@@ -140,7 +141,7 @@ export async function POST(
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Cookie: cookie,
+          ...(cookieHeader && { Cookie: cookieHeader }),
         },
         credentials: 'include',
         body: JSON.stringify(body),
