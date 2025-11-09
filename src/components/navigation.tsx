@@ -29,6 +29,7 @@ import {
   Home,
   FolderOpen,
   Plus,
+  Mail,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
@@ -53,6 +54,9 @@ export function Navigation() {
     }
     if (href === '/projects') {
       return pathname === '/projects';
+    }
+    if (href === '/contact') {
+      return pathname === '/contact';
     }
     return pathname === href;
   };
@@ -144,6 +148,16 @@ export function Navigation() {
               >
                 Create
               </Link>
+              <Link
+                href="/contact"
+                className={`font-medium transition-colors ${
+                  isActiveLink('/contact')
+                    ? 'text-[#f50a06]'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Contact Us
+              </Link>
             </nav>
           )}
 
@@ -218,6 +232,20 @@ export function Navigation() {
                       >
                         <Plus className="h-5 w-5" />
                         <span className="font-medium">Create</span>
+                      </Link>
+                    </SheetClose>
+
+                    <SheetClose asChild>
+                      <Link
+                        href="/contact"
+                        className={`flex items-center space-x-3 px-3 py-2 rounded-md transition-colors ${
+                          isActiveLink('/contact')
+                            ? 'text-[#f50a06] bg-accent'
+                            : 'hover:bg-accent'
+                        }`}
+                      >
+                        <Mail className="h-5 w-5" />
+                        <span className="font-medium">Contact Us</span>
                       </Link>
                     </SheetClose>
 
