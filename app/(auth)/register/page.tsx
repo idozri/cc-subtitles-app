@@ -24,6 +24,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Checkbox } from '@/components/ui/checkbox';
 import { client } from '@/api/common/client';
 import { Loader2, Mail, Lock, User } from 'lucide-react';
 
@@ -33,6 +34,12 @@ const registerSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
   token: z.string().optional(),
+  privacyPolicyAccepted: z.boolean().refine((val) => val === true, {
+    message: 'You must accept the Terms of Use and Privacy Policy',
+  }),
+  termsAccepted: z.boolean().refine((val) => val === true, {
+    message: 'You must accept the Terms of Use and Privacy Policy',
+  }),
 });
 
 type RegisterFormData = z.infer<typeof registerSchema>;
@@ -53,8 +60,18 @@ function RegisterForm() {
       email: '',
       password: '',
       token: '',
+      privacyPolicyAccepted: false,
+      termsAccepted: false,
     },
   });
+
+  const [termsAccepted, setTermsAccepted] = useState(false);
+
+  useEffect(() => {
+    // Sync both fields when the single checkbox changes
+    form.setValue('privacyPolicyAccepted', termsAccepted);
+    form.setValue('termsAccepted', termsAccepted);
+  }, [termsAccepted, form]);
 
   useEffect(() => {
     const tokenParam = searchParams.get('token');
@@ -212,6 +229,44 @@ function RegisterForm() {
                       </div>
                     </FormControl>
                     <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="privacyPolicyAccepted"
+                render={() => (
+                  <FormItem className="flex flex-row items-center space-x-3 space-y-0">
+                    <FormControl>
+                      <Checkbox
+                        checked={termsAccepted}
+                        onCheckedChange={(checked) => {
+                          setTermsAccepted(checked === true);
+                        }}
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel className="text-sm font-normal">
+                        By checking this box, I agree to the{' '}
+                        <Link
+                          href="/terms-of-use"
+                          target="_blank"
+                          className="text-primary hover:underline"
+                        >
+                          Terms of Use
+                        </Link>{' '}
+                        and{' '}
+                        <Link
+                          href="/privacy-policy"
+                          target="_blank"
+                          className="text-primary hover:underline"
+                        >
+                          Privacy Policy
+                        </Link>
+                      </FormLabel>
+                      <FormMessage />
+                    </div>
                   </FormItem>
                 )}
               />
