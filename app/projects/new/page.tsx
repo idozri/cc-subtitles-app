@@ -45,7 +45,7 @@ import { S3UploadService } from '@/lib/s3-upload';
 import type { UploadProgress } from '@/types/upload';
 import { extractAudioFromVideo } from '@/lib/ffmpeg-audio';
 import { generateVideoThumbnail } from '@/lib/video-thumbnail';
-import { client } from '../api/common/client';
+import { client } from '../../api/common/client';
 import {
   saveFileWithFileSystemAccess,
   isFileSystemAccessSupported,
