@@ -92,8 +92,8 @@ export const metadata: Metadata = {
     title: 'CC Subtitles – AI-Powered Video Transcription & Subtitles',
     description: siteDescription,
     images: [`${siteUrl}/opengraph-image.jpg`],
-    creator: '@ccsubtitles',
-    site: '@ccsubtitles',
+    creator: '@cc-subtitles',
+    site: '@cc-subtitles',
   },
   robots: {
     index: true,
