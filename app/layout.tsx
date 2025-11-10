@@ -21,7 +21,7 @@ const geistMono = Geist_Mono({
 const siteUrl =
   process.env.NEXT_PUBLIC_SITE_URL ||
   process.env.NEXTAUTH_URL ||
-  'https://www.cc-subtitles.com';
+  'https://app.cc-subtitles.com';
 const siteName = 'CC Subtitles';
 const siteDescription =
   'Transform your videos into professional subtitles with AI-powered transcription and translation.';
