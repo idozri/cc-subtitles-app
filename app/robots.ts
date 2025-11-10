@@ -3,7 +3,7 @@ import { MetadataRoute } from 'next';
 const siteUrl =
   process.env.NEXT_PUBLIC_SITE_URL ||
   process.env.NEXTAUTH_URL ||
-  'https://app.cc-subtitle.com';
+  'https://app.cc-subtitles.com';
 
 export default function robots(): MetadataRoute.Robots {
   return {
