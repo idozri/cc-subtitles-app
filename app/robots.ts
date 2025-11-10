@@ -1,6 +1,9 @@
 import { MetadataRoute } from 'next';
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXTAUTH_URL || 'https://app.ccsubtitle.com';
+const siteUrl =
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  process.env.NEXTAUTH_URL ||
+  'https://app.cc-subtitle.com';
 
 export default function robots(): MetadataRoute.Robots {
   return {
@@ -19,14 +22,9 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: 'Googlebot',
         allow: '/',
-        disallow: [
-          '/api/',
-          '/_next/',
-          '/auth/',
-        ],
+        disallow: ['/api/', '/_next/', '/auth/'],
       },
     ],
     sitemap: `${siteUrl}/sitemap.xml`,
   };
 }
-
