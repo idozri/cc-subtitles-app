@@ -21,15 +21,15 @@ const geistMono = Geist_Mono({
 const siteUrl =
   process.env.NEXT_PUBLIC_SITE_URL ||
   process.env.NEXTAUTH_URL ||
-  'https://app.ccsubtitle.com';
-const siteName = 'CC Subtitles AI';
+  'https://app.cc-subtitles.com';
+const siteName = 'CC Subtitles';
 const siteDescription =
-  'Transform your videos into professional subtitles with AI-powered transcription. Upload videos, get accurate transcriptions, and create multilingual subtitles with translation support. Fast, accurate, and multilingual subtitle generation.';
+  'Transform your videos into professional subtitles with AI-powered transcription and translation.';
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: 'CC Subtitles - AI-Powered Video Transcription & Subtitles',
+    default: 'CC Subtitles – AI-Powered Video Transcription & Subtitles',
     template: '%s | CC Subtitles',
   },
   description: siteDescription,
@@ -53,9 +53,9 @@ export const metadata: Metadata = {
     'caption generator',
     'video transcription software',
   ],
-  authors: [{ name: 'CC Subtitles AI', url: siteUrl }],
-  creator: 'CC Subtitles AI',
-  publisher: 'CC Subtitles AI',
+  authors: [{ name: 'CC Subtitles', url: siteUrl }],
+  creator: 'CC Subtitles',
+  publisher: 'CC Subtitles',
   applicationName: siteName,
   category: 'Video Transcription & Subtitles',
   classification: 'Software',
@@ -73,25 +73,25 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'en_US',
-    url: '/',
+    url: siteUrl,
     siteName: siteName,
-    title: 'CC Subtitles AI - AI-Powered Video Transcription & Subtitles',
+    title: 'CC Subtitles – AI-Powered Video Transcription & Subtitles',
     description: siteDescription,
     images: [
       {
-        url: '/opengraph-image.png',
+        url: `${siteUrl}/opengraph-image.png`,
         width: 1200,
         height: 630,
-        alt: 'CC Subtitles AI - AI-Powered Video Transcription & Subtitles',
+        alt: 'CC Subtitles – AI-Powered Video Transcription & Subtitles',
         type: 'image/png',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'CC Subtitles AI - AI-Powered Video Transcription & Subtitles',
+    title: 'CC Subtitles – AI-Powered Video Transcription & Subtitles',
     description: siteDescription,
-    images: ['/opengraph-image.png'],
+    images: [`${siteUrl}/opengraph-image.png`],
     creator: '@ccsubtitles',
     site: '@ccsubtitles',
   },
@@ -145,7 +145,7 @@ export default function RootLayout({
     url: siteUrl,
     publisher: {
       '@type': 'Organization',
-      name: 'CC Subtitles AI',
+      name: 'CC Subtitles',
       url: siteUrl,
     },
     aggregateRating: {
