@@ -33,6 +33,7 @@ import { useVideoPlayer } from '@/hooks/use-video-player';
 import { useTranscriptionEditor } from '@/hooks/use-transcription-editor';
 import {
   FileVideo,
+  FileAudio,
   Languages,
   Clock,
   Calendar,
@@ -72,6 +73,13 @@ import {
 } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
 import InlineTranscriptionEditor from '@/components/inline-transcription-editor';
+import {
+  getFileUrlFromHandle,
+  hasFileInIndexedDB,
+  saveFileToIndexedDB,
+} from '@/lib/file-system-access';
+import AudioPlayer from '@/components/audio-player';
+import { AlertTriangle, Video } from 'lucide-react';
 
 type TranscriptionData = {
   segments: Array<{
@@ -103,11 +111,16 @@ export default function GeneratePage() {
   const [translationError, setTranslationError] = useState<string | null>(null);
   const [isEditingMode, setIsEditingMode] = useState(false);
   const [editingTime, setEditingTime] = useState(0);
+  const [isRefreshingAudioUrl, setIsRefreshingAudioUrl] = useState(false);
   const videoPlayerRef = useRef<any>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
-
   // get the project with react query
-  const { data: project, isLoading } = useQuery({
+  const {
+    data: project,
+    isLoading,
+    refetch: refetchProject,
+  } = useQuery({
     queryKey: ['project', params.id],
     queryFn: async () => {
       const res = await client.get<ApiResponse<Project>>(
@@ -120,6 +133,7 @@ export default function GeneratePage() {
     refetchOnMount: false,
     refetchOnReconnect: false,
   });
+  console.log('project', project);
 
   const { data: jsonFile, isLoading: isLoadingJson } = useQuery({
     queryKey: ['transcription', params.id],
@@ -144,9 +158,102 @@ export default function GeneratePage() {
     return data?.language || project?.originalLanguage || undefined;
   }, [data?.language, project?.originalLanguage]);
 
-  // Video player hook
+  // State for locally stored video URL (from IndexedDB or File System Access API)
+  const [localVideoUrl, setLocalVideoUrl] = useState<string | null>(null);
+  const [videoExistsInIndexedDB, setVideoExistsInIndexedDB] = useState<
+    boolean | null
+  >(null);
+  const [isUploadingVideo, setIsUploadingVideo] = useState(false);
+
+  // Check if video exists in IndexedDB (only for video projects)
+  useEffect(() => {
+    if (!project?._id || project?.isAudioFile) {
+      // Skip check for audio files
+      if (project?.isAudioFile) {
+        setVideoExistsInIndexedDB(false);
+      }
+      return;
+    }
+
+    const checkVideoExists = async () => {
+      try {
+        const exists = await hasFileInIndexedDB(project._id);
+        setVideoExistsInIndexedDB(exists);
+      } catch (error) {
+        console.error('Failed to check video in IndexedDB:', error);
+        setVideoExistsInIndexedDB(false);
+      }
+    };
+
+    checkVideoExists();
+  }, [project?._id, project?.isAudioFile]);
+
+  // Load video from IndexedDB or File System Access API handle
+  // This prioritizes IndexedDB (which works across all browsers) over File System Access API
+  // Skip for audio files
+  useEffect(() => {
+    if (!project?._id || project?.isAudioFile) {
+      // Skip loading for audio files
+      if (project?.isAudioFile) {
+        setLocalVideoUrl(null);
+        setVideoExistsInIndexedDB(false);
+      }
+      return;
+    }
+
+    let currentUrl: string | null = null;
+
+    const loadLocalVideo = async () => {
+      try {
+        // This function prioritizes IndexedDB, then falls back to File System Access API handle
+        const url = await getFileUrlFromHandle(project._id);
+        if (url) {
+          currentUrl = url;
+          setLocalVideoUrl((prevUrl) => {
+            // Revoke previous URL if it exists
+            if (prevUrl) {
+              URL.revokeObjectURL(prevUrl);
+            }
+            return url;
+          });
+          setVideoExistsInIndexedDB(true);
+        } else {
+          // No local file found, clear the state
+          setLocalVideoUrl((prevUrl) => {
+            if (prevUrl) {
+              URL.revokeObjectURL(prevUrl);
+            }
+            return null;
+          });
+          setVideoExistsInIndexedDB(false);
+        }
+      } catch (error) {
+        console.error('Failed to load file from local storage:', error);
+        setLocalVideoUrl(null);
+        setVideoExistsInIndexedDB(false);
+      }
+    };
+
+    loadLocalVideo();
+
+    // Cleanup: revoke object URL when component unmounts or project changes
+    return () => {
+      setLocalVideoUrl((prevUrl) => {
+        if (prevUrl) {
+          URL.revokeObjectURL(prevUrl);
+        }
+        return null;
+      });
+      if (currentUrl) {
+        URL.revokeObjectURL(currentUrl);
+      }
+    };
+  }, [project?._id, project?.isAudioFile]);
+
+  // Video player hook - prioritize local storage (IndexedDB/File System Access API), then S3 URL
+  // For audio files, use empty src since we'll use AudioPlayer instead
   const videoPlayer = useVideoPlayer({
-    src: project?.srcUrl || '',
+    src: project?.isAudioFile ? '' : localVideoUrl || project?.srcUrl || '',
     onTimeUpdate: (time) => {
       // Update transcription editor with current time
       // This will be handled by the transcription editor hook
@@ -322,6 +429,59 @@ export default function GeneratePage() {
     setIsEditingMode(false);
     // Resume the video using the ref
     videoPlayerRef.current?.play();
+  };
+
+  // Handle video file re-upload
+  const handleVideoReupload = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file || !project?._id) {
+      return;
+    }
+
+    // Validate file type
+    if (!file.type.startsWith('video/')) {
+      toast({
+        title: 'Invalid File Type',
+        description: 'Please select a video file.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsUploadingVideo(true);
+    try {
+      // Save file to IndexedDB
+      await saveFileToIndexedDB(file, project._id);
+
+      // Reload the video from IndexedDB
+      const url = await getFileUrlFromHandle(project._id);
+      if (url) {
+        setLocalVideoUrl((prevUrl) => {
+          if (prevUrl) {
+            URL.revokeObjectURL(prevUrl);
+          }
+          return url;
+        });
+        setVideoExistsInIndexedDB(true);
+        toast({
+          title: 'Video Uploaded',
+          description: 'Video has been saved and is now available.',
+        });
+      }
+    } catch (error) {
+      console.error('Failed to upload video:', error);
+      toast({
+        title: 'Upload Failed',
+        description: 'Failed to save video. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsUploadingVideo(false);
+      // Reset input
+      event.target.value = '';
+    }
   };
 
   // Initialize visibility: show source + any translations found
@@ -527,55 +687,164 @@ export default function GeneratePage() {
             undo={transcriptionEditor.undo}
             redo={transcriptionEditor.redo}
             handleSave={transcriptionEditor.handleSave}
+            commitLinesUpdate={transcriptionEditor.commitLinesUpdate}
           />
         </div>
 
         {/* Right: video player, translations and settings */}
         <div className="relative lg:col-span-5 space-y-4 order-1 lg:order-2 ">
           <div className="sticky top-4 space-y-4 z-10">
-            {/* Video Player */}
+            {/* Video Player, Audio Player, or Missing Media Message */}
             <Card>
               <CardContent className="p-0">
-                <VideoPlayer
-                  ref={videoPlayerRef}
-                  src={project?.srcUrl!}
-                  currentTime={videoPlayer.currentTime}
-                  onTimeUpdate={(time) => {
-                    videoPlayer.setCurrentTime(time);
-                    transcriptionEditor.setCurrentTime(time);
-                  }}
-                  className="w-full"
-                  activeLineText={transcriptionEditor.activeLineText}
-                  activeSubtitles={transcriptionEditor.activeSubtitles}
-                  subtitleColor={color1}
-                  subtitleSecondaryColor={color2}
-                  subtitleFontFamily={fontFamily}
-                  subtitleScale={subtitleScale}
-                  subtitlePosition={subtitlePosition}
-                  subtitleBackground={subtitleBackground}
-                  subtitleOutline={subtitleOutline}
-                  onVideoClick={handleVideoClick}
-                  isEditingMode={isEditingMode}
-                  onExitEditingMode={handleExitEditingMode}
-                  editingComponent={
-                    isEditingMode ? (
-                      <InlineTranscriptionEditor
-                        currentTime={editingTime}
-                        lines={transcriptionEditor.lines}
-                        onEditLine={handleEditLine}
-                        onAddLine={handleAddLine}
-                        onExitEditing={handleExitEditingMode}
-                        sourceLanguageCode={originalLanguageCode}
+                {project?.isAudioFile ? (
+                  // Show audio player for audio-only projects
+                  project?.audioS3Url || project?.srcUrl ? (
+                    <div className="p-4">
+                      {isRefreshingAudioUrl ? (
+                        <div className="flex items-center justify-center h-32">
+                          <div className="flex flex-col items-center gap-2">
+                            <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full" />
+                            <p className="text-sm text-muted-foreground">
+                              Refreshing audio URL...
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        <AudioPlayer
+                          src={project.audioS3Url || project.srcUrl || ''}
+                          currentTime={videoPlayer.currentTime}
+                          onTimeUpdate={(time) => {
+                            videoPlayer.setCurrentTime(time);
+                            transcriptionEditor.setCurrentTime(time);
+                          }}
+                          onError={async () => {
+                            // When audio fails to load (likely expired URL), refresh the project to get a new signed URL
+                            setIsRefreshingAudioUrl(true);
+                            try {
+                              await refetchProject();
+                              // The AudioPlayer will automatically retry with the new URL
+                              // since the src prop will change when project updates
+                            } catch (error) {
+                              console.error(
+                                'Failed to refresh audio URL:',
+                                error
+                              );
+                              toast({
+                                variant: 'destructive',
+                                title: 'Failed to Load Audio',
+                                description:
+                                  'Could not refresh audio URL. Please try refreshing the page.',
+                              });
+                            } finally {
+                              setIsRefreshingAudioUrl(false);
+                            }
+                          }}
+                          className="w-full"
+                        />
+                      )}
+                    </div>
+                  ) : (
+                    <div className="relative h-[400px] bg-black flex items-center justify-center">
+                      <div className="flex flex-col items-center px-6 text-center">
+                        <AlertTriangle className="h-12 w-12 text-warning-500 mb-4" />
+                        <h3 className="text-white text-lg font-semibold mb-2">
+                          Audio File Missing
+                        </h3>
+                        <p className="text-gray-400 text-sm mb-6 max-w-md">
+                          The audio file is no longer available. Please contact
+                          support.
+                        </p>
+                      </div>
+                    </div>
+                  )
+                ) : videoExistsInIndexedDB === false && !localVideoUrl ? (
+                  // Show missing video message for video projects
+                  <div className="relative h-[400px] bg-black flex items-center justify-center">
+                    <div className="flex flex-col items-center px-6 text-center">
+                      <AlertTriangle className="h-12 w-12 text-warning-500 mb-4" />
+                      <h3 className="text-white text-lg font-semibold mb-2">
+                        Video File Missing
+                      </h3>
+                      <p className="text-gray-400 text-sm mb-6 max-w-md">
+                        The video file is no longer available on this device.
+                        Please re-upload the video file to continue editing.
+                      </p>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="video/*"
+                        onChange={handleVideoReupload}
+                        className="hidden"
+                        disabled={isUploadingVideo}
                       />
-                    ) : undefined
-                  }
-                />
+                      <Button
+                        disabled={isUploadingVideo}
+                        className="bg-primary-500 hover:bg-primary-600"
+                        size="default"
+                        onClick={() => fileInputRef.current?.click()}
+                      >
+                        {isUploadingVideo ? (
+                          <>
+                            <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2" />
+                            Uploading...
+                          </>
+                        ) : (
+                          <>
+                            <Video className="h-4 w-4 mr-2" />
+                            Select Video
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  // Show video player for video projects
+                  <VideoPlayer
+                    ref={videoPlayerRef}
+                    src={localVideoUrl || project?.srcUrl || ''}
+                    currentTime={videoPlayer.currentTime}
+                    onTimeUpdate={(time) => {
+                      videoPlayer.setCurrentTime(time);
+                      transcriptionEditor.setCurrentTime(time);
+                    }}
+                    className="w-full"
+                    activeLineText={transcriptionEditor.activeLineText}
+                    activeSubtitles={transcriptionEditor.activeSubtitles}
+                    subtitleColor={color1}
+                    subtitleSecondaryColor={color2}
+                    subtitleFontFamily={fontFamily}
+                    subtitleScale={subtitleScale}
+                    subtitlePosition={subtitlePosition}
+                    subtitleBackground={subtitleBackground}
+                    subtitleOutline={subtitleOutline}
+                    onVideoClick={handleVideoClick}
+                    isEditingMode={isEditingMode}
+                    onExitEditingMode={handleExitEditingMode}
+                    editingComponent={
+                      isEditingMode ? (
+                        <InlineTranscriptionEditor
+                          currentTime={editingTime}
+                          lines={transcriptionEditor.lines}
+                          onEditLine={handleEditLine}
+                          onAddLine={handleAddLine}
+                          onExitEditing={handleExitEditingMode}
+                          sourceLanguageCode={originalLanguageCode}
+                        />
+                      ) : undefined
+                    }
+                  />
+                )}
               </CardContent>
             </Card>
             <div className="flex flex-wrap items-center gap-4 mb-4 p-4 rounded-lg border bg-card text-card-foreground shadow-sm">
               <div className="flex flex-wrap items-center gap-4 text-sm">
                 <div className="flex items-center gap-2">
-                  <FileVideo className="h-4 w-4 text-muted-foreground" />
+                  {project?.isAudioFile ? (
+                    <FileAudio className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <FileVideo className="h-4 w-4 text-muted-foreground" />
+                  )}
                   <span
                     className="font-medium truncate max-w-[240px]"
                     title={project?.fileName}

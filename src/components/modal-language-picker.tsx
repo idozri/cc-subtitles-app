@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Search, X } from 'lucide-react';
+import { Bot, Search, X } from 'lucide-react';
 import { Button, Input } from '@/components/ui';
 import { ALL_LANGUAGES, Language } from '@/lib/languages';
 import { cn } from '@/lib/utils';
@@ -35,14 +35,70 @@ const ModalLanguagePicker: React.FC<ModalLanguagePickerProps> = ({
       return;
     }
 
-    const query = searchQuery.toLowerCase();
-    const filtered = baseList.filter((lang) => {
-      const haystack = `${lang.name} ${lang.code || ''} ${
-        lang.translateCode || ''
-      }`.toLowerCase();
-      return haystack.includes(query);
-    });
-    setFilteredLanguages(filtered);
+    const query = searchQuery.toLowerCase().trim();
+
+    // Score and filter languages based on search relevance
+    const scoredLanguages = baseList
+      .map((lang) => {
+        const nameLower = lang.name.toLowerCase();
+        const codeLower = (lang.code || '').toLowerCase();
+        const translateCodeLower = (lang.translateCode || '').toLowerCase();
+
+        // Calculate relevance score
+        let score = 0;
+
+        // Exact name match gets highest score
+        if (nameLower === query) {
+          score += 1000;
+        }
+        // Name starts with query gets high score
+        else if (nameLower.startsWith(query)) {
+          score += 500;
+        }
+        // Name contains query
+        else if (nameLower.includes(query)) {
+          score += 100;
+        }
+
+        // Code exact match
+        if (codeLower === query) {
+          score += 800;
+        }
+        // Code starts with query
+        else if (codeLower.startsWith(query)) {
+          score += 400;
+        }
+        // Code contains query
+        else if (codeLower.includes(query)) {
+          score += 50;
+        }
+
+        // Translate code exact match
+        if (translateCodeLower === query) {
+          score += 800;
+        }
+        // Translate code starts with query
+        else if (translateCodeLower.startsWith(query)) {
+          score += 400;
+        }
+        // Translate code contains query
+        else if (translateCodeLower.includes(query)) {
+          score += 50;
+        }
+
+        // Check if any field matches
+        const matches =
+          nameLower.includes(query) ||
+          codeLower.includes(query) ||
+          translateCodeLower.includes(query);
+
+        return { language: lang, score, matches };
+      })
+      .filter((item) => item.matches)
+      .sort((a, b) => b.score - a.score)
+      .map((item) => item.language);
+
+    setFilteredLanguages(scoredLanguages);
   }, [searchQuery, purpose]);
 
   useEffect(() => {
@@ -108,14 +164,16 @@ const ModalLanguagePicker: React.FC<ModalLanguagePickerProps> = ({
         <div className="flex-1 overflow-y-auto">
           {filteredLanguages.length > 0 ? (
             <div className="p-2">
-              {filteredLanguages.map((language) => {
+              {filteredLanguages.map((language, index) => {
                 const code = language.translateCode || language.code || '';
                 const isDisabled = disabledCodes.includes(code);
+                // Create a unique key by combining all identifying fields and index
+                const uniqueKey = `${language.code || ''}-${
+                  language.translateCode || ''
+                }-${language.name}-${index}`;
                 return (
                   <button
-                    key={
-                      language.code || language.translateCode || language.name
-                    }
+                    key={uniqueKey}
                     onClick={() => !isDisabled && handleSelect(language)}
                     className={cn(
                       'w-full flex items-center gap-3 p-3 rounded-md text-left transition-colors',
@@ -129,14 +187,20 @@ const ModalLanguagePicker: React.FC<ModalLanguagePickerProps> = ({
                       <img
                         src={`/assets/flags/${language.image}`}
                         alt={`${language.name} flag`}
-                        width={16}
-                        height={16}
-                        className="w-4 h-4 object-cover rounded-sm mr-1"
+                        width={24}
+                        height={24}
+                        className="w-8 h-8 object-cover rounded-sm mr-1"
                       />
+                    ) : language.code == 'auto' ? (
+                      <Bot className="w-5 h-5" />
                     ) : (
                       <span
-                        className="text-lg mr-1"
                         aria-label={`${language.name} flag`}
+                        style={{
+                          fontSize: '32px',
+                          marginLeft: '-4px',
+                          marginRight: '4px',
+                        }}
                       >
                         🌐
                       </span>

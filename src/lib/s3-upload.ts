@@ -116,6 +116,7 @@ export class S3UploadService {
     const chunks: FileChunk[] = this.createFileChunks(file, session.chunkSize);
     const results: UploadedChunk[] = [];
     const startTime = Date.now();
+    let totalUploadedBytes = 0;
 
     console.log('S3UploadService: Starting chunk upload:', {
       fileSize: file.size,
@@ -139,28 +140,55 @@ export class S3UploadService {
           this.uploadChunkWithRetry(
             chunk,
             uploadId,
-            presignedUrls[chunk.partNumber - 1]
+            presignedUrls[chunk.partNumber - 1],
+            (chunkProgress) => {
+              // Progress callback for individual chunk upload
+              const currentChunkBytes = Math.round(chunk.data.size * (chunkProgress / 100));
+              const uploadedBytes = totalUploadedBytes + currentChunkBytes;
+              const progress = Math.round((uploadedBytes / file.size) * 100);
+              const elapsed = Date.now() - startTime;
+              const speed = elapsed > 0 ? uploadedBytes / (elapsed / 1000) : 0;
+              const estimatedTimeRemaining =
+                speed > 0 ? (file.size - uploadedBytes) / speed : 0;
+
+              const uploadProgress: UploadProgress = {
+                projectId: session.projectId,
+                progress,
+                uploadedBytes,
+                totalBytes: file.size,
+                currentChunk: results.length,
+                totalChunks,
+                estimatedTimeRemaining,
+                speed,
+              };
+
+              if (onProgress) {
+                onProgress(uploadProgress);
+              }
+            }
           )
         );
 
         const batchResults = await Promise.all(batchPromises);
         results.push(...batchResults);
 
-        // Update progress
-        const uploadedBytes = results.reduce(
+        // Update total uploaded bytes after batch completes
+        totalUploadedBytes = results.reduce(
           (sum, chunk) => sum + chunk.size,
           0
         );
-        const progress = Math.round((uploadedBytes / file.size) * 100);
+
+        // Update progress after batch completion
+        const progress = Math.round((totalUploadedBytes / file.size) * 100);
         const elapsed = Date.now() - startTime;
-        const speed = uploadedBytes / (elapsed / 1000);
+        const speed = totalUploadedBytes / (elapsed / 1000);
         const estimatedTimeRemaining =
-          speed > 0 ? (file.size - uploadedBytes) / speed : 0;
+          speed > 0 ? (file.size - totalUploadedBytes) / speed : 0;
 
         const uploadProgress: UploadProgress = {
           projectId: session.projectId,
           progress,
-          uploadedBytes,
+          uploadedBytes: totalUploadedBytes,
           totalBytes: file.size,
           currentChunk: results.length,
           totalChunks,
@@ -171,7 +199,7 @@ export class S3UploadService {
         console.log('S3UploadService: Progress update:', {
           batch: Math.floor(i / this.config.maxConcurrentChunks) + 1,
           progress: `${progress}%`,
-          uploadedBytes: `${uploadedBytes}/${file.size}`,
+          uploadedBytes: `${totalUploadedBytes}/${file.size}`,
           currentChunk: results.length,
           totalChunks,
           onProgressExists: !!onProgress,
@@ -371,13 +399,14 @@ export class S3UploadService {
   private async uploadChunkWithRetry(
     chunk: FileChunk,
     uploadId: string,
-    presignedUrl: string
+    presignedUrl: string,
+    onChunkProgress?: (progress: number) => void
   ): Promise<UploadedChunk> {
     let lastError: Error;
 
     for (let attempt = 1; attempt <= this.config.maxRetries; attempt++) {
       try {
-        return await this.uploadChunk(chunk, presignedUrl);
+        return await this.uploadChunk(chunk, presignedUrl, onChunkProgress);
       } catch (error) {
         lastError = error as Error;
 
@@ -397,6 +426,56 @@ export class S3UploadService {
   }
 
   private async uploadChunk(
+    chunk: FileChunk,
+    presignedUrl: string,
+    onProgress?: (progress: number) => void
+  ): Promise<UploadedChunk> {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+
+      // Track upload progress
+      if (onProgress) {
+        xhr.upload.addEventListener('progress', (e) => {
+          if (e.lengthComputable) {
+            const percentComplete = (e.loaded / e.total) * 100;
+            onProgress(percentComplete);
+          }
+        });
+      }
+
+      xhr.addEventListener('load', () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          const etag = xhr.getResponseHeader('ETag')?.replace(/"/g, '');
+          if (!etag) {
+            reject(new Error('No ETag in response'));
+            return;
+          }
+
+          resolve({
+            partNumber: chunk.partNumber,
+            etag,
+            size: chunk.data.size,
+          });
+        } else {
+          reject(new Error(`Upload failed with status: ${xhr.status}`));
+        }
+      });
+
+      xhr.addEventListener('error', () => {
+        reject(new Error('Network error during upload'));
+      });
+
+      xhr.addEventListener('abort', () => {
+        reject(new Error('Upload aborted'));
+      });
+
+      xhr.open('PUT', presignedUrl);
+      xhr.send(chunk.data);
+    });
+  }
+
+  // Keeping the old fetch-based method as a fallback (not used anymore)
+  private async uploadChunkFetch(
     chunk: FileChunk,
     presignedUrl: string
   ): Promise<UploadedChunk> {
