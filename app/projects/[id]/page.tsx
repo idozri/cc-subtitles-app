@@ -697,68 +697,72 @@ export default function GeneratePage() {
             {/* Video Player, Audio Player, or Missing Media Message */}
             <Card>
               <CardContent className="p-0">
-                {project?.isAudioFile ? (
-                  // Show audio player for audio-only projects
-                  project?.audioS3Url || project?.srcUrl ? (
-                    <div className="p-4">
-                      {isRefreshingAudioUrl ? (
-                        <div className="flex items-center justify-center h-32">
-                          <div className="flex flex-col items-center gap-2">
-                            <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full" />
-                            <p className="text-sm text-muted-foreground">
-                              Refreshing audio URL...
-                            </p>
+                {project?.isAudioFile ||
+                  (videoExistsInIndexedDB === false &&
+                    !localVideoUrl &&
+                    // Show audio player for audio-only projects
+                    (project?.audioS3Url || project?.srcUrl ? (
+                      <div className="p-4">
+                        {isRefreshingAudioUrl ? (
+                          <div className="flex items-center justify-center h-32">
+                            <div className="flex flex-col items-center gap-2">
+                              <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full" />
+                              <p className="text-sm text-muted-foreground">
+                                Refreshing audio URL...
+                              </p>
+                            </div>
                           </div>
-                        </div>
-                      ) : (
-                        <AudioPlayer
-                          src={project.audioS3Url || project.srcUrl || ''}
-                          currentTime={videoPlayer.currentTime}
-                          onTimeUpdate={(time) => {
-                            videoPlayer.setCurrentTime(time);
-                            transcriptionEditor.setCurrentTime(time);
-                          }}
-                          onError={async () => {
-                            // When audio fails to load (likely expired URL), refresh the project to get a new signed URL
-                            setIsRefreshingAudioUrl(true);
-                            try {
-                              await refetchProject();
-                              // The AudioPlayer will automatically retry with the new URL
-                              // since the src prop will change when project updates
-                            } catch (error) {
-                              console.error(
-                                'Failed to refresh audio URL:',
-                                error
-                              );
-                              toast({
-                                variant: 'destructive',
-                                title: 'Failed to Load Audio',
-                                description:
-                                  'Could not refresh audio URL. Please try refreshing the page.',
-                              });
-                            } finally {
-                              setIsRefreshingAudioUrl(false);
-                            }
-                          }}
-                          className="w-full"
-                        />
-                      )}
-                    </div>
-                  ) : (
-                    <div className="relative h-[400px] bg-black flex items-center justify-center">
-                      <div className="flex flex-col items-center px-6 text-center">
-                        <AlertTriangle className="h-12 w-12 text-warning-500 mb-4" />
-                        <h3 className="text-white text-lg font-semibold mb-2">
-                          Audio File Missing
-                        </h3>
-                        <p className="text-gray-400 text-sm mb-6 max-w-md">
-                          The audio file is no longer available. Please contact
-                          support.
-                        </p>
+                        ) : (
+                          <AudioPlayer
+                            src={project.audioS3Url || project.srcUrl || ''}
+                            currentTime={videoPlayer.currentTime}
+                            onTimeUpdate={(time) => {
+                              videoPlayer.setCurrentTime(time);
+                              transcriptionEditor.setCurrentTime(time);
+                            }}
+                            onError={async () => {
+                              // When audio fails to load (likely expired URL), refresh the project to get a new signed URL
+                              setIsRefreshingAudioUrl(true);
+                              try {
+                                await refetchProject();
+                                // The AudioPlayer will automatically retry with the new URL
+                                // since the src prop will change when project updates
+                              } catch (error) {
+                                console.error(
+                                  'Failed to refresh audio URL:',
+                                  error
+                                );
+                                toast({
+                                  variant: 'destructive',
+                                  title: 'Failed to Load Audio',
+                                  description:
+                                    'Could not refresh audio URL. Please try refreshing the page.',
+                                });
+                              } finally {
+                                setIsRefreshingAudioUrl(false);
+                              }
+                            }}
+                            className="w-full"
+                          />
+                        )}
                       </div>
-                    </div>
-                  )
-                ) : videoExistsInIndexedDB === false && !localVideoUrl ? (
+                    ) : (
+                      <div className="relative h-[400px] bg-black flex items-center justify-center">
+                        <div className="flex flex-col items-center px-6 text-center">
+                          <AlertTriangle className="h-12 w-12 text-warning-500 mb-4" />
+                          <h3 className="text-white text-lg font-semibold mb-2">
+                            Audio File Missing
+                          </h3>
+                          <p className="text-gray-400 text-sm mb-6 max-w-md">
+                            The audio file is no longer available. Please
+                            contact support.
+                          </p>
+                        </div>
+                      </div>
+                    )))}{' '}
+                {!project?.isAudioFile &&
+                videoExistsInIndexedDB === false &&
+                !localVideoUrl ? (
                   // Show missing video message for video projects
                   <div className="relative h-[400px] bg-black flex items-center justify-center">
                     <div className="flex flex-col items-center px-6 text-center">
