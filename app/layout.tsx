@@ -79,7 +79,7 @@ export const metadata: Metadata = {
     description: siteDescription,
     images: [
       {
-        url: `${siteUrl}/opengraph-image.png`,
+        url: `${siteUrl}/opengraph-image.jpg`,
         width: 1200,
         height: 630,
         alt: 'CC Subtitles – AI-Powered Video Transcription & Subtitles',
@@ -91,7 +91,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'CC Subtitles – AI-Powered Video Transcription & Subtitles',
     description: siteDescription,
-    images: [`${siteUrl}/opengraph-image.png`],
+    images: [`${siteUrl}/opengraph-image.jpg`],
     creator: '@ccsubtitles',
     site: '@ccsubtitles',
   },
