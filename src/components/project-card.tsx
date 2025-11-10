@@ -149,10 +149,39 @@ export function ProjectCard({
   const [isRetrying, setIsRetrying] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [liveStatus, setLiveStatus] = useState<string | null>('pending');
+  const [thumbnailError, setThumbnailError] = useState(false);
+  const [thumbnailLoading, setThumbnailLoading] = useState(true);
+  const [retryCount, setRetryCount] = useState(0);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   // Worker functionality removed - resume uploads not supported
   const updateProject = useProjectStore((s) => s.updateProject);
   const deleteProject = useProjectStore((s) => s.deleteProject);
+
+  // Reset thumbnail state when project or thumbnailUrl changes
+  useEffect(() => {
+    if (project.thumbnailUrl) {
+      setThumbnailError(false);
+      setThumbnailLoading(true);
+      setRetryCount(0);
+    } else {
+      setThumbnailError(false);
+      setThumbnailLoading(false);
+      setRetryCount(0);
+    }
+  }, [project._id, project.thumbnailUrl]);
+
+  // Retry loading thumbnail if it fails (up to 2 retries)
+  useEffect(() => {
+    if (thumbnailError && project.thumbnailUrl && retryCount < 2) {
+      const timer = setTimeout(() => {
+        setThumbnailError(false);
+        setThumbnailLoading(true);
+        setRetryCount((prev) => prev + 1);
+      }, 1000 * (retryCount + 1)); // Exponential backoff: 1s, 2s
+
+      return () => clearTimeout(timer);
+    }
+  }, [thumbnailError, project.thumbnailUrl, retryCount]);
 
   useEffect(() => {
     // 1) If already ready, update local status and do not open socket
@@ -323,15 +352,28 @@ export function ProjectCard({
       <CardContent className="space-y-4">
         {/* Thumbnail / Icon */}
         <div className="w-full aspect-video bg-neutral-900 rounded-md overflow-hidden relative flex items-center justify-center">
-          {project.thumbnailUrl ? (
-            <Image
-              src={project.thumbnailUrl}
-              alt={project.title}
-              fill
-              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-              priority={false}
-              className="object-contain"
-            />
+          {project.thumbnailUrl && !thumbnailError ? (
+            <>
+              {thumbnailLoading && (
+                <div className="absolute inset-0 flex items-center justify-center bg-neutral-900">
+                  <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full" />
+                </div>
+              )}
+              <Image
+                key={`${project.thumbnailUrl}-${retryCount}`}
+                src={project.thumbnailUrl}
+                alt={project.title}
+                fill
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                priority={false}
+                className="object-contain"
+                onLoad={() => setThumbnailLoading(false)}
+                onError={() => {
+                  setThumbnailError(true);
+                  setThumbnailLoading(false);
+                }}
+              />
+            </>
           ) : project.mimeType?.startsWith('audio/') ? (
             <div className="flex items-center justify-center text-muted-foreground">
               <FileAudio className="w-12 h-12" />

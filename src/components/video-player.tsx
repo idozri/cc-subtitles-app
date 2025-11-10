@@ -547,7 +547,7 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(
                 'absolute left-0 right-0 px-2 sm:px-4 flex justify-center',
                 subtitlePosition === 'top' && 'top-4',
                 subtitlePosition === 'middle' && 'top-1/2 -translate-y-1/2',
-                subtitlePosition === 'bottom' && 'bottom-4'
+                subtitlePosition === 'bottom' && 'bottom-16'
               )}
             >
               <div className="flex flex-col items-center gap-2 w-full">

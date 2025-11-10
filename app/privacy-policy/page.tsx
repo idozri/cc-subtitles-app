@@ -1,3 +1,21 @@
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Privacy Policy',
+  description:
+    'Privacy Policy for CC Subtitles AI. Learn how we collect, use, and protect your data when using our AI-powered video transcription and subtitle generation service.',
+  robots: {
+    index: true,
+    follow: true,
+  },
+  openGraph: {
+    title: 'Privacy Policy | CC Subtitles AI',
+    description:
+      'Privacy Policy for CC Subtitles AI. Learn how we collect, use, and protect your data when using our AI-powered video transcription and subtitle generation service.',
+    type: 'website',
+  },
+};
+
 export default function PrivacyPolicyPage() {
   return (
     <div className="min-h-screen bg-background p-4 py-8">
@@ -203,4 +221,5 @@ export default function PrivacyPolicyPage() {
     </div>
   );
 }
+
 

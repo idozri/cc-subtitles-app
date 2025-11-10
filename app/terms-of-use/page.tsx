@@ -1,3 +1,21 @@
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Terms of Use',
+  description:
+    'Terms of Use for CC Subtitles AI. Read our terms and conditions for using our AI-powered video transcription, translation, and subtitle generation service.',
+  robots: {
+    index: true,
+    follow: true,
+  },
+  openGraph: {
+    title: 'Terms of Use | CC Subtitles AI',
+    description:
+      'Terms of Use for CC Subtitles AI. Read our terms and conditions for using our AI-powered video transcription, translation, and subtitle generation service.',
+    type: 'website',
+  },
+};
+
 export default function TermsOfUsePage() {
   return (
     <div className="min-h-screen bg-background p-4 py-8">
@@ -96,4 +114,5 @@ export default function TermsOfUsePage() {
     </div>
   );
 }
+
 

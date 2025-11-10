@@ -1,4 +1,21 @@
+import type { Metadata } from 'next';
 import ContactUsForm from '@/components/ContactUsForm';
+
+export const metadata: Metadata = {
+  title: 'Contact Us',
+  description:
+    'Get in touch with CC Subtitles AI. Have questions, ideas, or need support? Contact our team for help with video transcription, subtitles, and translation services.',
+  robots: {
+    index: true,
+    follow: true,
+  },
+  openGraph: {
+    title: 'Contact Us | CC Subtitles AI',
+    description:
+      'Get in touch with CC Subtitles AI. Have questions, ideas, or need support? Contact our team for help with video transcription, subtitles, and translation services.',
+    type: 'website',
+  },
+};
 
 export default function ContactPage() {
   return (

@@ -43,7 +43,7 @@ export default function ProjectsPage() {
   };
 
   const handleCreateNew = () => {
-    router.push('/projects/new');
+    router.push('/projects/create');
   };
 
   const handleCancelProject = async (projectId: string) => {

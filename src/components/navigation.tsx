@@ -30,27 +30,42 @@ import {
   FolderOpen,
   Plus,
   Mail,
+  Trash2,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { useState } from 'react';
 import Image from 'next/image';
 import { ModeToggle } from '@/components/mode-toggle';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { useToast } from '@/hooks/use-toast';
 
 export function Navigation() {
   const router = useRouter();
   const pathname = usePathname();
   const { user, clearUser, isLoading } = useUserStore();
+  const { toast } = useToast();
 
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   // Helper function to check if a link is active
   const isActiveLink = (href: string) => {
     if (href === '/') {
       return pathname === '/';
     }
-    if (href === '/projects/new') {
-      return pathname === '/projects/new';
+    if (href === '/projects/create') {
+      return pathname === '/projects/create';
     }
     if (href === '/projects') {
       return pathname === '/projects';
@@ -70,6 +85,58 @@ export function Navigation() {
       console.error('Logout error:', error);
     } finally {
       setIsLoggingOut(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    try {
+      setIsDeleting(true);
+      const response = await fetch('/api/users/me', {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to delete account');
+      }
+
+      // Clear user state
+      clearUser();
+
+      // Try to clear auth cookies by calling logout endpoint (may fail if account is already deleted, but that's ok)
+      try {
+        await fetch('/api/auth/logout', {
+          method: 'POST',
+          credentials: 'include',
+        });
+      } catch (signOutError) {
+        // Ignore sign out errors since account is already deleted
+        console.log('Logout after deletion:', signOutError);
+      }
+
+      // Show success message
+      toast({
+        title: 'Account deleted',
+        description: 'Your account has been successfully deleted.',
+      });
+
+      // Redirect to home page
+      if (typeof window !== 'undefined') {
+        window.location.href = '/';
+      }
+    } catch (error) {
+      console.error('Delete account error:', error);
+      toast({
+        title: 'Error',
+        description:
+          error instanceof Error
+            ? error.message
+            : 'Failed to delete account. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteDialog(false);
     }
   };
 
@@ -106,12 +173,12 @@ export function Navigation() {
             <Link href="/" className="flex items-center space-x-2">
               <Image
                 src="/assets/logo.jpg"
-                alt="CC Subtitles AI Logo"
+                alt="CC Subtitles Logo"
                 width={32}
                 height={32}
                 className="rounded-full"
               />
-              <span className="text-xl font-bold">Subtitles AI</span>
+              <span className="text-xl font-bold">Subtitles</span>
             </Link>
           </div>
 
@@ -139,9 +206,9 @@ export function Navigation() {
                 Projects
               </Link>
               <Link
-                href="/projects/new"
+                href="/projects/create"
                 className={`font-medium transition-colors ${
-                  isActiveLink('/projects/new')
+                  isActiveLink('/projects/create')
                     ? 'text-[#f50a06]'
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
@@ -223,9 +290,9 @@ export function Navigation() {
 
                     <SheetClose asChild>
                       <Link
-                        href="/projects/new"
+                        href="/projects/create"
                         className={`flex items-center space-x-3 px-3 py-2 rounded-md transition-colors ${
-                          isActiveLink('/projects/new')
+                          isActiveLink('/projects/create')
                             ? 'text-[#f50a06] bg-accent'
                             : 'hover:bg-accent'
                         }`}
@@ -249,7 +316,7 @@ export function Navigation() {
                       </Link>
                     </SheetClose>
 
-                    <div className="border-t pt-4 mt-4">
+                    <div className="border-t pt-4 mt-4 space-y-2">
                       <button
                         onClick={handleSignOut}
                         disabled={isLoggingOut}
@@ -258,6 +325,16 @@ export function Navigation() {
                         <LogOut className="h-5 w-5" />
                         <span className="font-medium">
                           {isLoggingOut ? 'Signing out...' : 'Sign out'}
+                        </span>
+                      </button>
+                      <button
+                        onClick={() => setShowDeleteDialog(true)}
+                        disabled={isDeleting}
+                        className="flex items-center space-x-3 px-3 py-2 rounded-md hover:bg-destructive/10 hover:text-destructive transition-colors w-full text-left text-destructive"
+                      >
+                        <Trash2 className="h-5 w-5" />
+                        <span className="font-medium">
+                          {isDeleting ? 'Deleting...' : 'Delete account'}
                         </span>
                       </button>
                     </div>
@@ -303,12 +380,43 @@ export function Navigation() {
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>Log out</span>
                   </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => setShowDeleteDialog(true)}
+                    className="cursor-pointer text-destructive focus:text-destructive"
+                    disabled={isDeleting}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    <span>{isDeleting ? 'Deleting...' : 'Delete account'}</span>
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : null}
           </div>
         </div>
       </div>
+
+      {/* Delete Account Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Account</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete your account? This action cannot
+              be undone. All your data and projects will be permanently deleted.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteAccount}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? 'Deleting...' : 'Delete Account'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </header>
   );
 }

@@ -20,7 +20,10 @@ const contactFormSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   company: z.string().optional(),
   phone: z.string().optional(),
-  email: z.string().email('Please enter a valid email address').min(1, 'Email is required'),
+  email: z
+    .string()
+    .email('Please enter a valid email address')
+    .min(1, 'Email is required'),
   message: z.string().max(500, 'Message must be at most 500 characters'),
 });
 
@@ -170,4 +173,3 @@ export default function ContactUsForm() {
     </div>
   );
 }
-

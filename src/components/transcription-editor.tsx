@@ -44,6 +44,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui';
+import JSZip from 'jszip';
 
 interface TranscriptionJsonWord {
   word: string;
@@ -93,6 +94,9 @@ interface TranscriptionEditorProps {
   undo?: () => void;
   redo?: () => void;
   handleSave?: () => Promise<void>;
+  commitLinesUpdate?: (
+    updater: (prev: TranscriptionLineData[]) => TranscriptionLineData[]
+  ) => void;
 }
 
 const clamp = (value: number, min: number, max: number): number =>
@@ -126,6 +130,7 @@ const TranscriptionEditor: React.FC<TranscriptionEditorProps> = React.memo(
     undo: externalUndo,
     redo: externalRedo,
     handleSave: externalHandleSave,
+    commitLinesUpdate: externalCommitLinesUpdate,
   }) => {
     const router = useRouter();
     const { toast } = useToast();
@@ -215,38 +220,35 @@ const TranscriptionEditor: React.FC<TranscriptionEditorProps> = React.memo(
         pending: l.pending ? { ...l.pending } : undefined,
       }));
 
-    // Restore local commitLinesUpdate but use external state when available
+    // Use external commitLinesUpdate if available, otherwise use local implementation
     const commitLinesUpdate = useCallback(
       (updater: (prev: TranscriptionLineData[]) => TranscriptionLineData[]) => {
+        // If external commitLinesUpdate is provided, use it directly (it handles isDirty, undo/redo)
+        if (externalCommitLinesUpdate) {
+          externalCommitLinesUpdate(updater);
+          return;
+        }
+
+        // Local fallback implementation
         let didChange = false;
         setLines((prev) => {
           const nextLines = updater(prev);
           if (nextLines === prev) return prev;
           didChange = true;
-          // Only update undo/redo if we have external functions
-          if (externalUndo && externalRedo) {
-            // External state management - let the hook handle it
-            return nextLines;
-          } else {
-            // Local state management (fallback)
-            setUndoStack((uPrev) => {
-              const next = [...uPrev, cloneLines(prev)];
-              return next.length > UNDO_LIMIT ? next.slice(1) : next;
-            });
-            setRedoStack([]);
-            return nextLines;
-          }
+          // Local state management (fallback)
+          setUndoStack((uPrev) => {
+            const next = [...uPrev, cloneLines(prev)];
+            return next.length > UNDO_LIMIT ? next.slice(1) : next;
+          });
+          setRedoStack([]);
+          return nextLines;
         });
         if (didChange) {
-          if (externalIsDirty !== undefined) {
-            // External state management - let the hook handle it
-          } else {
-            // Local state management (fallback)
-            setLocalIsDirty(true);
-          }
+          // Local state management (fallback)
+          setLocalIsDirty(true);
         }
       },
-      [externalUndo, externalRedo, externalIsDirty]
+      [externalCommitLinesUpdate]
     );
 
     // Use external undo/redo state from hook, fallback to local state
@@ -769,6 +771,7 @@ const TranscriptionEditor: React.FC<TranscriptionEditorProps> = React.memo(
     };
 
     const insertLineAtStart = () => {
+      debugger;
       const first = lines[0];
       if (!first) return;
       if (first.start < 1) return;
@@ -1066,31 +1069,37 @@ const TranscriptionEditor: React.FC<TranscriptionEditorProps> = React.memo(
       [lines, getLineTextForLanguage]
     );
 
-    const buildSrtForLanguage = (code: string): string => {
-      const chunks: string[] = [];
-      let idx = 1;
-      for (const l of lines) {
-        const t = getLineTextForLanguage(l, code);
-        if (!t) continue;
-        chunks.push(String(idx++));
-        chunks.push(`${formatTimeSrt(l.start)} --> ${formatTimeSrt(l.end)}`);
-        chunks.push(t);
-        chunks.push('');
-      }
-      return chunks.join('\n');
-    };
+    const buildSrtForLanguage = useCallback(
+      (code: string): string => {
+        const chunks: string[] = [];
+        let idx = 1;
+        for (const l of lines) {
+          const t = getLineTextForLanguage(l, code);
+          if (!t) continue;
+          chunks.push(String(idx++));
+          chunks.push(`${formatTimeSrt(l.start)} --> ${formatTimeSrt(l.end)}`);
+          chunks.push(t);
+          chunks.push('');
+        }
+        return chunks.join('\n');
+      },
+      [lines, getLineTextForLanguage]
+    );
 
-    const buildVttForLanguage = (code: string): string => {
-      const chunks: string[] = ['WEBVTT', ''];
-      for (const l of lines) {
-        const t = getLineTextForLanguage(l, code);
-        if (!t) continue;
-        chunks.push(`${formatTimeVtt(l.start)} --> ${formatTimeVtt(l.end)}`);
-        chunks.push(t);
-        chunks.push('');
-      }
-      return chunks.join('\n');
-    };
+    const buildVttForLanguage = useCallback(
+      (code: string): string => {
+        const chunks: string[] = ['WEBVTT', ''];
+        for (const l of lines) {
+          const t = getLineTextForLanguage(l, code);
+          if (!t) continue;
+          chunks.push(`${formatTimeVtt(l.start)} --> ${formatTimeVtt(l.end)}`);
+          chunks.push(t);
+          chunks.push('');
+        }
+        return chunks.join('\n');
+      },
+      [lines, getLineTextForLanguage]
+    );
 
     const downloadTextFile = (
       filename: string,
@@ -1112,38 +1121,164 @@ const TranscriptionEditor: React.FC<TranscriptionEditorProps> = React.memo(
       }
     };
 
-    const handleExportText = useCallback(() => {
-      const code = pickExportLanguageCode();
-      if (!code) return;
-      const txt = buildPlainTextForLanguage(code);
-      downloadTextFile(
-        `${projectId || 'export'}-${code}.txt`,
-        txt,
-        'text/plain;charset=utf-8'
-      );
-    }, [pickExportLanguageCode, buildPlainTextForLanguage, projectId]);
+    // Get all available language codes (source + all translations)
+    const getAllAvailableLanguageCodes = useCallback((): string[] => {
+      const codes = new Set<string>();
+      const src = (sourceLanguageCode || '').trim();
+      if (src) {
+        codes.add(src);
+      }
+      // Collect all translation codes from all lines
+      for (const line of lines) {
+        if (line.translations) {
+          for (const code of Object.keys(line.translations)) {
+            if (code && code.trim()) {
+              codes.add(code.trim());
+            }
+          }
+        }
+      }
+      return Array.from(codes);
+    }, [lines, sourceLanguageCode]);
 
-    const handleExportSrt = () => {
-      const code = pickExportLanguageCode();
-      if (!code) return;
-      const srt = buildSrtForLanguage(code);
-      downloadTextFile(
-        `${projectId || 'export'}-${code}.srt`,
-        srt,
-        'application/x-subrip;charset=utf-8'
-      );
+    // Download zip file with multiple files
+    const downloadZipFile = async (
+      filename: string,
+      files: Array<{ name: string; content: string }>
+    ) => {
+      try {
+        const zip = new JSZip();
+        for (const file of files) {
+          zip.file(file.name, file.content);
+        }
+        const blob = await zip.generateAsync({ type: 'blob' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      } catch (e) {
+        console.error('Zip download failed', e);
+        toast({
+          title: 'Export Failed',
+          description: 'Failed to create zip file. Please try again.',
+          variant: 'destructive',
+        });
+      }
     };
 
-    const handleExportVtt = () => {
-      const code = pickExportLanguageCode();
-      if (!code) return;
-      const vtt = buildVttForLanguage(code);
-      downloadTextFile(
-        `${projectId || 'export'}-${code}.vtt`,
-        vtt,
-        'text/vtt;charset=utf-8'
-      );
-    };
+    const handleExportText = useCallback(async () => {
+      const allCodes = getAllAvailableLanguageCodes();
+      if (allCodes.length === 0) {
+        toast({
+          title: 'No Languages Available',
+          description: 'No languages found to export.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const files = allCodes
+        .map((code) => {
+          const content = buildPlainTextForLanguage(code);
+          // Only include files that have content
+          if (!content.trim()) return null;
+          return {
+            name: `${code}.txt`,
+            content,
+          };
+        })
+        .filter((f): f is { name: string; content: string } => f !== null);
+
+      if (files.length === 0) {
+        toast({
+          title: 'No Content Available',
+          description: 'No content found to export.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      await downloadZipFile(`${projectId || 'export'}-text.zip`, files);
+    }, [
+      getAllAvailableLanguageCodes,
+      buildPlainTextForLanguage,
+      projectId,
+      toast,
+    ]);
+
+    const handleExportSrt = useCallback(async () => {
+      const allCodes = getAllAvailableLanguageCodes();
+      if (allCodes.length === 0) {
+        toast({
+          title: 'No Languages Available',
+          description: 'No languages found to export.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const files = allCodes
+        .map((code) => {
+          const content = buildSrtForLanguage(code);
+          // Only include files that have content
+          if (!content.trim()) return null;
+          return {
+            name: `${code}.srt`,
+            content,
+          };
+        })
+        .filter((f): f is { name: string; content: string } => f !== null);
+
+      if (files.length === 0) {
+        toast({
+          title: 'No Content Available',
+          description: 'No content found to export.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      await downloadZipFile(`${projectId || 'export'}-srt.zip`, files);
+    }, [getAllAvailableLanguageCodes, buildSrtForLanguage, projectId, toast]);
+
+    const handleExportVtt = useCallback(async () => {
+      const allCodes = getAllAvailableLanguageCodes();
+      if (allCodes.length === 0) {
+        toast({
+          title: 'No Languages Available',
+          description: 'No languages found to export.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const files = allCodes
+        .map((code) => {
+          const content = buildVttForLanguage(code);
+          // Only include files that have content
+          if (!content.trim()) return null;
+          return {
+            name: `${code}.vtt`,
+            content,
+          };
+        })
+        .filter((f): f is { name: string; content: string } => f !== null);
+
+      if (files.length === 0) {
+        toast({
+          title: 'No Content Available',
+          description: 'No content found to export.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      await downloadZipFile(`${projectId || 'export'}-vtt.zip`, files);
+    }, [getAllAvailableLanguageCodes, buildVttForLanguage, projectId, toast]);
 
     const activeSubtitles = useMemo(() => {
       // Use external activeSubtitles if provided
@@ -1384,16 +1519,12 @@ const TranscriptionEditor: React.FC<TranscriptionEditorProps> = React.memo(
                 </Dialog>
               </div> */}
         {/* Add Line Modal */}
-        {/* <AddLineDialog
-                  open={isAddLineOpen}
-                  onOpenChange={setIsAddLineOpen}
-                  pending={pendingNewLine}
-                  onSubmit={commitNewLine}
-                />
-              </div>
-            </CardContent>
-          </Card>
-        )} */}
+        <AddLineDialog
+          open={isAddLineOpen}
+          onOpenChange={setIsAddLineOpen}
+          pending={pendingNewLine}
+          onSubmit={commitNewLine}
+        />
         <Card className="relative">
           <CardHeader className="text-lg sm:text-xl sticky top-4 bg-card z-10 rounded-t-lg outline outline-border outline-1">
             <div className="absolute h-[1px] -bottom-[1px] left-0 right-0 z-10 bg-card" />

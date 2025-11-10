@@ -19,6 +19,7 @@ interface AudioPlayerProps {
   src: string;
   currentTime?: number;
   onTimeUpdate?: (time: number) => void;
+  onError?: () => void;
   className?: string;
 }
 
@@ -26,6 +27,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
   src,
   currentTime = 0,
   onTimeUpdate,
+  onError,
   className,
 }) => {
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -38,6 +40,15 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
   const [hasError, setHasError] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const isSeekingRef = useRef(false);
+
+  // Reset error state when src changes (allows retry with new URL)
+  useEffect(() => {
+    if (src) {
+      setHasError(false);
+      setErrorMessage(null);
+      setIsBuffering(true);
+    }
+  }, [src]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -63,6 +74,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
       setHasError(true);
       setErrorMessage('Failed to load audio file');
       setIsBuffering(false);
+      onError?.();
     };
 
     const handleLoadStart = () => setIsBuffering(true);
@@ -87,7 +99,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
       audio.removeEventListener('loadstart', handleLoadStart);
       audio.removeEventListener('canplay', handleCanPlay);
     };
-  }, [onTimeUpdate]);
+  }, [onTimeUpdate, onError]);
 
   // Sync external currentTime with internal state (only when external time is explicitly set and meaningful)
   useEffect(() => {

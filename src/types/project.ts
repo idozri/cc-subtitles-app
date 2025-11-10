@@ -38,6 +38,8 @@ export interface Project {
   exportJobId?: string;
   isAudioFile: boolean;
   scaleFormat?: string;
+  fileSystemHandleId?: string;
+  audioS3Url?: string;
 }
 
 export interface CreateProjectData {
@@ -53,6 +55,8 @@ export interface CreateProjectData {
   durationSeconds?: number;
   isAudioFile?: boolean;
   scaleFormat?: string;
+  fileSystemHandleId?: string;
+  audioS3Url?: string;
 }
 
 export interface ProjectWithUpload extends Project {
