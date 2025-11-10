@@ -64,8 +64,8 @@ export function Navigation() {
     if (href === '/') {
       return pathname === '/';
     }
-    if (href === '/projects/create') {
-      return pathname === '/projects/create';
+    if (href === '/projects/new') {
+      return pathname === '/projects/new';
     }
     if (href === '/projects') {
       return pathname === '/projects';
@@ -206,9 +206,9 @@ export function Navigation() {
                 Projects
               </Link>
               <Link
-                href="/projects/create"
+                href="/projects/new"
                 className={`font-medium transition-colors ${
-                  isActiveLink('/projects/create')
+                  isActiveLink('/projects/new')
                     ? 'text-[#f50a06]'
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
@@ -290,9 +290,9 @@ export function Navigation() {
 
                     <SheetClose asChild>
                       <Link
-                        href="/projects/create"
+                        href="/projects/new"
                         className={`flex items-center space-x-3 px-3 py-2 rounded-md transition-colors ${
-                          isActiveLink('/projects/create')
+                          isActiveLink('/projects/new')
                             ? 'text-[#f50a06] bg-accent'
                             : 'hover:bg-accent'
                         }`}
